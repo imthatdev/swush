@@ -1,0 +1,70 @@
+/*
+ *   Copyright (c) 2025 Laith Alkhaddam aka Iconical.
+ *   All rights reserved.
+
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+
+ *   http://www.apache.org/licenses/LICENSE-2.0
+
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+:root[data-theme="obsidian"],
+.dark[data-theme="obsidian"] {
+  --background: #0f0f0f;
+  --foreground: #e5e5e5;
+
+  --card: #141414;
+  --card-foreground: var(--foreground);
+  --popover: #141414;
+  --popover-foreground: var(--foreground);
+
+  --primary: #bb86fc;
+  --primary-foreground: #0f0f0f;
+
+  --secondary: #1a1a1a;
+  --secondary-foreground: #e5e5e5;
+
+  --muted: #1a1a1a;
+  --muted-foreground: #b8b8b8;
+
+  --accent: #03dac6;
+  --accent-foreground: #0f0f0f;
+
+  --destructive: #ff5c5c;
+
+  --border: #2a2a2a;
+  --input: #1e1e1e;
+  --ring: #bb86fc;
+
+  --chart-1: #bb86fc;
+  --chart-2: #03dac6;
+  --chart-3: #ffb86c;
+  --chart-4: #8be9fd;
+  --chart-5: #ff79c6;
+
+  --sidebar: #111111;
+  --sidebar-foreground: #e5e5e5;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #171717;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: #171717;
+  --scrollbar-thumb: #2a2a2a;
+  --scrollbar-thumb-hover: #3a3a3a;
+
+  --primary-hover: color-mix(in oklch, var(--primary) 90%, white 10%);
+  --primary-active: color-mix(in oklch, var(--primary) 82%, white 18%);
+  --secondary-hover: color-mix(in oklch, var(--secondary) 92%, white 8%);
+  --accent-hover: color-mix(in oklch, var(--accent) 92%, white 8%);
+}
+

@@ -1,0 +1,42 @@
+/*
+ *   Copyright (c) 2025 Laith Alkhaddam aka Iconical.
+ *   All rights reserved.
+
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+
+ *   http://www.apache.org/licenses/LICENSE-2.0
+
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+import { NextResponse } from "next/server";
+import { tmdbGetTitle } from "@/lib/providers/tmdb";
+import { withApiError } from "@/lib/server/api-error";
+
+type Params = Promise<{ id: string }>;
+
+export const GET = withApiError(async function GET(_req: Request, { params }: { params: Params }) {
+  const { id } = await params;
+  try {
+    const meta = await tmdbGetTitle("tv", id);
+    return NextResponse.json({
+      id: meta.providerId,
+      title: meta.title,
+      seasons: meta.seasons || [],
+      rating: meta.rating ?? undefined,
+      number_of_seasons: meta.number_of_seasons ?? meta.seasons?.length ?? 0,
+      number_of_episodes: meta.number_of_episodes ?? undefined,
+    });
+  } catch (e) {
+    return NextResponse.json(
+      { error: (e as Error).message || "tmdb error" },
+      { status: 500 }
+    );
+  }
+});

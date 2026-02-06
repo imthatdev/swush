@@ -1,0 +1,84 @@
+/*
+ *   The Angel ꕀ airy, bright, gentle theme
+ */
+:root[data-theme="the-angel"] {
+  --background: #fbfdff;
+  --foreground: #041025;
+
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
+
+  --primary: #a7d8ff; /* sky */
+  --primary-foreground: #04243f;
+
+  --secondary: #f0f8ff;
+  --secondary-foreground: #04243f;
+
+  --muted: #eef7fb;
+  --muted-foreground: #6b7f8f;
+
+  --accent: #fff6c8; /* halo */
+  --accent-foreground: #2b2b1a;
+
+  --destructive: #ff6b6b;
+
+  --border: #e6f2fb;
+  --input: #f7fbff;
+  --ring: #cbe9ff;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #fbfeff;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: #f1f8ff;
+  --scrollbar-thumb: #dbeffb;
+  --scrollbar-thumb-hover: #c6e6fa;
+}
+
+.dark[data-theme="the-angel"] {
+  --background: #071425;
+  --foreground: #e6f7ff;
+
+  --card: #071425;
+  --card-foreground: var(--foreground);
+  --popover: #071425;
+  --popover-foreground: var(--foreground);
+
+  --primary: #6cc8ff;
+  --primary-foreground: #04243f;
+
+  --secondary: #0e2a3e;
+  --secondary-foreground: #e6f7ff;
+
+  --muted: #0b2233;
+  --muted-foreground: #9ccbe9;
+
+  --accent: #fff0b8;
+  --accent-foreground: #2b2b1a;
+
+  --destructive: #ff6b6b;
+
+  --border: #0c2a3b;
+  --input: #071425;
+  --ring: #6cc8ff;
+
+  --sidebar: #071425;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #0a2234;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: #071425;
+  --scrollbar-thumb: #083145;
+  --scrollbar-thumb-hover: #0a4058;
+}

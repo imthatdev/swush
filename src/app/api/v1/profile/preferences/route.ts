@@ -1,0 +1,51 @@
+/*
+ *   Copyright (c) 2026 Laith Alkhaddam aka Iconical.
+ *   All rights reserved.
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/client/user";
+import { withApiError } from "@/lib/server/api-error";
+import {
+  getUserPreferences,
+  updateUserPreferences,
+} from "@/lib/server/user-preferences";
+
+export const GET = withApiError(async function GET() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const settings = await getUserPreferences(user.id);
+  return NextResponse.json({ settings });
+});
+
+export const PATCH = withApiError(async function PATCH(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let body: Record<string, unknown> = {};
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const settings = await updateUserPreferences(user.id, body);
+  return NextResponse.json({ settings });
+});

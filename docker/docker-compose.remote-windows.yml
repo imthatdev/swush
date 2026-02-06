@@ -1,0 +1,17 @@
+services:
+  app:
+    image: iconical/swush-ce:latest
+    container_name: swush-app
+    restart: unless-stopped
+    env_file:
+      - ../.env
+
+    ports:
+      - "3419:3000"
+    volumes:
+      - D:/selfhosted/swush/uploads:/data/uploads:rw
+    networks:
+      - swush
+
+networks:
+  swush:

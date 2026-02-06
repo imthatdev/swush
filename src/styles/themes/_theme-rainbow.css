@@ -1,0 +1,227 @@
+/*
+ *   Copyright (c) 2025 Laith Alkhaddam aka Iconical.
+ *   All rights reserved.
+
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+
+ *   http://www.apache.org/licenses/LICENSE-2.0
+
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+:root[data-theme="rainbow"] {
+  --rainbow-1: #ff9aa2;
+  --rainbow-2: #ffd97e;
+  --rainbow-3: #b7f0b0;
+  --rainbow-4: #9fdaf9;
+  --rainbow-5: #cdb4ff;
+  --primary-gradient: linear-gradient(
+    90deg,
+    var(--rainbow-1) 0%,
+    var(--rainbow-2) 25%,
+    var(--rainbow-3) 50%,
+    var(--rainbow-4) 75%,
+    var(--rainbow-5) 100%
+  );
+  --rainbow-bg: linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--rainbow-1) 70%, transparent 30%),
+    color-mix(in oklch, var(--rainbow-2) 70%, transparent 30%),
+    color-mix(in oklch, var(--rainbow-3) 70%, transparent 30%)
+  );
+
+  --background: #ffffff;
+  --foreground: #0b1220;
+
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
+
+  --primary: #ff5f6d;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f3f4f6;
+  --secondary-foreground: #0b1220;
+
+  --muted: #f4f6f8;
+  --muted-foreground: #5b6470;
+
+  --accent: #ffd371;
+  --accent-foreground: #0b1220;
+
+  --destructive: #ff006e;
+
+  --border: #e6e9ee;
+  --input: #f6f7f9;
+  --ring: #9ed56b;
+
+  --chart-1: var(--rainbow-1);
+  --chart-2: var(--rainbow-2);
+  --chart-3: var(--rainbow-3);
+  --chart-4: var(--rainbow-4);
+  --chart-5: var(--rainbow-5);
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #fafafa;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: #f3f4f6;
+  --scrollbar-thumb: #d1d6de;
+  --scrollbar-thumb-hover: #b8c0cc;
+
+  --primary-hover: color-mix(in oklch, var(--primary) 90%, black 10%);
+  --primary-active: color-mix(in oklch, var(--primary) 82%, black 18%);
+  --secondary-hover: color-mix(in oklch, var(--secondary) 92%, black 8%);
+  --accent-hover: color-mix(in oklch, var(--accent) 92%, black 8%);
+}
+
+.dark[data-theme="rainbow"] {
+  --rainbow-1: #ff5f6d;
+  --rainbow-2: #ffc371;
+  --rainbow-3: #8ac926;
+  --rainbow-4: #7ac7f4;
+  --rainbow-5: #b389f6;
+  --primary-gradient: linear-gradient(
+    90deg,
+    var(--rainbow-1) 0%,
+    var(--rainbow-2) 25%,
+    var(--rainbow-3) 50%,
+    var(--rainbow-4) 75%,
+    var(--rainbow-5) 100%
+  );
+  --rainbow-bg: linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--rainbow-1) 70%, transparent 30%),
+    color-mix(in oklch, var(--rainbow-2) 70%, transparent 30%),
+    color-mix(in oklch, var(--rainbow-3) 70%, transparent 30%)
+  );
+
+  --background: #0f1113;
+  --foreground: #fefefe;
+
+  --card: #1b1b1d;
+  --card-foreground: var(--foreground);
+  --popover: #1b1b1d;
+  --popover-foreground: var(--foreground);
+
+  --primary: #ff595e;
+  --primary-foreground: #1a1a1a;
+
+  --secondary: #2a2a2a;
+  --secondary-foreground: #fefefe;
+
+  --muted: #2a2a2a;
+  --muted-foreground: #cfcfcf;
+
+  --accent: #ffca3a;
+  --accent-foreground: #1a1a1a;
+
+  --destructive: #ff006e;
+
+  --border: #444;
+  --input: #333;
+  --ring: #8ac926;
+
+  --chart-1: var(--rainbow-1);
+  --chart-2: var(--rainbow-2);
+  --chart-3: var(--rainbow-3);
+  --chart-4: var(--rainbow-4);
+  --chart-5: var(--rainbow-5);
+
+  --sidebar: #191919;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #232323;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: #222;
+  --scrollbar-thumb: #3a3a3a;
+  --scrollbar-thumb-hover: #4a4a4a;
+
+  --primary-hover: color-mix(in oklch, var(--primary) 90%, white 10%);
+  --primary-active: color-mix(in oklch, var(--primary) 82%, white 18%);
+  --secondary-hover: color-mix(in oklch, var(--secondary) 92%, white 8%);
+  --accent-hover: color-mix(in oklch, var(--accent) 92%, white 8%);
+
+  /* page background under rainbow theme */
+  background-image: var(--rainbow-bg);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
+}
+
+:root[data-theme="rainbow"] input[type="range"],
+.dark[data-theme="rainbow"] input[type="range"] {
+  --slider-track: var(--primary-gradient);
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  width: 100%;
+}
+:root[data-theme="rainbow"] input[type="range"]::-webkit-slider-runnable-track,
+.dark[data-theme="rainbow"] input[type="range"]::-webkit-slider-runnable-track {
+  background: var(--slider-track);
+  height: 8px;
+  border-radius: 999px;
+}
+:root[data-theme="rainbow"] input[type="range"]::-webkit-slider-thumb,
+.dark[data-theme="rainbow"] input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.95),
+    rgba(230, 230, 230, 0.95)
+  );
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
+  border: 3px solid rgba(255, 255, 255, 0.9);
+}
+:root[data-theme="rainbow"] input[type="range"]::-moz-range-track,
+.dark[data-theme="rainbow"] input[type="range"]::-moz-range-track {
+  background: var(--slider-track);
+  height: 8px;
+  border-radius: 999px;
+}
+:root[data-theme="rainbow"] input[type="range"]::-moz-range-progress,
+.dark[data-theme="rainbow"] input[type="range"]::-moz-range-progress {
+  background: var(--slider-track);
+  height: 8px;
+}
+
+:root[data-theme="rainbow"] progress,
+.dark[data-theme="rainbow"] progress {
+  /* ensure cross-browser progress shows a rainbow fill */
+  background: transparent;
+  border-radius: 999px;
+  overflow: hidden;
+}
+:root[data-theme="rainbow"] progress::-webkit-progress-value {
+  background: var(--primary-gradient);
+}
+.dark[data-theme="rainbow"] progress::-webkit-progress-value {
+  background: var(--primary-gradient);
+}
+:root[data-theme="rainbow"] progress::-moz-progress-bar {
+  background: var(--primary-gradient);
+}
+.dark[data-theme="rainbow"] progress::-moz-progress-bar {
+  background: var(--primary-gradient);
+}

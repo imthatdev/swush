@@ -1,0 +1,140 @@
+/*
+ *   Copyright (c) 2025 Laith Alkhaddam aka Iconical.
+ *   All rights reserved.
+
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+
+ *   http://www.apache.org/licenses/LICENSE-2.0
+
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+/*
+ *   Copyright (c) 2025 Laith Alkhaddam aka Iconical.
+ *   All rights reserved.
+
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+
+ *   http://www.apache.org/licenses/LICENSE-2.0
+
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+:root[data-theme="crimson"] {
+  --background: oklch(0.98 0.01 20);
+  --foreground: oklch(0.22 0.05 25);
+
+  --card: color-mix(in oklch, var(--background) 94%, black 6%);
+  --card-foreground: var(--foreground);
+
+  --popover: color-mix(in oklch, var(--background) 90%, black 10%);
+  --popover-foreground: var(--foreground);
+
+  --primary: oklch(0.58 0.26 25);
+  --primary-foreground: oklch(0.98 0.01 25);
+
+  --secondary: color-mix(in oklch, var(--background) 85%, var(--primary) 15%);
+  --secondary-foreground: var(--foreground);
+
+  --muted: color-mix(in oklch, var(--background) 90%, black 10%);
+  --muted-foreground: oklch(0.55 0.02 25);
+
+  --accent: oklch(0.65 0.22 350);
+  --accent-foreground: var(--foreground);
+
+  --destructive: oklch(0.52 0.27 25);
+
+  --border: color-mix(in oklch, var(--foreground) 14%, var(--background));
+  --input: color-mix(in oklch, var(--foreground) 12%, var(--background));
+  --ring: var(--primary);
+
+  --chart-1: oklch(0.58 0.26 25);
+  --chart-2: oklch(0.66 0.23 350);
+  --chart-3: oklch(0.64 0.21 60);
+  --chart-4: oklch(0.72 0.18 200);
+  --chart-5: oklch(0.68 0.19 120);
+
+  --sidebar: color-mix(in oklch, var(--background) 95%, black 5%);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: var(--muted);
+  --scrollbar-thumb: var(--border);
+  --scrollbar-thumb-hover: var(--ring);
+
+  --primary-hover: color-mix(in oklch, var(--primary) 92%, black 8%);
+  --primary-active: color-mix(in oklch, var(--primary) 86%, black 14%);
+  --secondary-hover: color-mix(in oklch, var(--secondary) 92%, black 8%);
+  --accent-hover: color-mix(in oklch, var(--accent) 92%, black 8%);
+}
+
+.dark[data-theme="crimson"] {
+  --background: oklch(0.15 0.02 25);
+  --foreground: oklch(0.95 0.01 25);
+
+  --card: color-mix(in oklch, var(--background) 88%, white 12%);
+  --card-foreground: var(--foreground);
+
+  --popover: color-mix(in oklch, var(--background) 84%, white 16%);
+  --popover-foreground: var(--foreground);
+
+  --primary: oklch(0.7 0.25 25);
+  --primary-foreground: oklch(0.18 0.01 25);
+
+  --secondary: color-mix(in oklch, var(--background) 80%, var(--primary) 20%);
+  --secondary-foreground: var(--foreground);
+
+  --muted: color-mix(in oklch, var(--background) 86%, white 14%);
+  --muted-foreground: oklch(0.8 0.015 25);
+
+  --accent: oklch(0.72 0.22 350);
+  --accent-foreground: var(--foreground);
+
+  --destructive: oklch(0.6 0.22 25);
+
+  --border: color-mix(in oklch, white 20%, var(--background));
+  --input: color-mix(in oklch, white 18%, var(--background));
+  --ring: var(--primary);
+
+  --chart-1: oklch(0.7 0.25 25);
+  --chart-2: oklch(0.72 0.22 350);
+  --chart-3: oklch(0.68 0.21 60);
+  --chart-4: oklch(0.76 0.19 200);
+  --chart-5: oklch(0.72 0.19 120);
+
+  --sidebar: color-mix(in oklch, var(--background) 84%, white 16%);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: var(--secondary);
+  --scrollbar-thumb: var(--border);
+  --scrollbar-thumb-hover: var(--ring);
+
+  --primary-hover: color-mix(in oklch, var(--primary) 90%, white 10%);
+  --primary-active: color-mix(in oklch, var(--primary) 82%, white 18%);
+  --secondary-hover: color-mix(in oklch, var(--secondary) 92%, white 8%);
+  --accent-hover: color-mix(in oklch, var(--accent) 92%, white 8%);
+}
+

@@ -1,0 +1,121 @@
+/*
+ *   Copyright (c) 2025 Laith Alkhaddam aka Iconical.
+ *   All rights reserved.
+
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+
+ *   http://www.apache.org/licenses/LICENSE-2.0
+
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+:root[data-theme="gruvbox"] {
+  --background: #fbf1c7;
+  --foreground: #3c3836;
+
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
+
+  --primary: #d79921;
+  --primary-foreground: #3c3836;
+
+  --secondary: #ebdbb2;
+  --secondary-foreground: #3c3836;
+
+  --muted: #e0d4a1;
+  --muted-foreground: #665c54;
+
+  --accent: #b16286;
+  --accent-foreground: #fbf1c7;
+
+  --destructive: #cc241d;
+
+  --border: #d5c4a1;
+  --input: #e6dbb8;
+  --ring: #d79921;
+
+  --chart-1: #d79921;
+  --chart-2: #98971a;
+  --chart-3: #b16286;
+  --chart-4: #458588;
+  --chart-5: #cc241d;
+
+  --sidebar: #f2e7b6;
+  --sidebar-foreground: #3c3836;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #eadfa7;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: #eadfa7;
+  --scrollbar-thumb: #d5c4a1;
+  --scrollbar-thumb-hover: #c7b693;
+
+  --primary-hover: color-mix(in oklch, var(--primary) 92%, black 8%);
+  --primary-active: color-mix(in oklch, var(--primary) 86%, black 14%);
+  --secondary-hover: color-mix(in oklch, var(--secondary) 92%, black 8%);
+  --accent-hover: color-mix(in oklch, var(--accent) 92%, black 8%);
+}
+
+.dark[data-theme="gruvbox"] {
+  --background: #282828;
+  --foreground: #ebdbb2;
+
+  --card: #32302f;
+  --card-foreground: var(--foreground);
+  --popover: #32302f;
+  --popover-foreground: var(--foreground);
+
+  --primary: #d79921;
+  --primary-foreground: #282828;
+
+  --secondary: #3c3836;
+  --secondary-foreground: #ebdbb2;
+
+  --muted: #3c3836;
+  --muted-foreground: #d5c4a1;
+
+  --accent: #b16286;
+  --accent-foreground: #282828;
+
+  --destructive: #cc241d;
+
+  --border: #504945;
+  --input: #3c3836;
+  --ring: #d79921;
+
+  --chart-1: #d79921;
+  --chart-2: #98971a;
+  --chart-3: #b16286;
+  --chart-4: #458588;
+  --chart-5: #cc241d;
+
+  --sidebar: #2f2b2a;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #35312f;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: #2f2b2a;
+  --scrollbar-thumb: #504945;
+  --scrollbar-thumb-hover: #5a524d;
+
+  --primary-hover: color-mix(in oklch, var(--primary) 90%, white 10%);
+  --primary-active: color-mix(in oklch, var(--primary) 82%, white 18%);
+  --secondary-hover: color-mix(in oklch, var(--secondary) 92%, white 8%);
+  --accent-hover: color-mix(in oklch, var(--accent) 92%, white 8%);
+}
+

@@ -1,0 +1,70 @@
+/*
+ *   Copyright (c) 2025 Laith Alkhaddam aka Iconical.
+ *   All rights reserved.
+
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+
+ *   http://www.apache.org/licenses/LICENSE-2.0
+
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+:root[data-theme="dracula"],
+.dark[data-theme="dracula"] {
+  --background: #282a36;
+  --foreground: #f8f8f2;
+
+  --card: #2f3140;
+  --card-foreground: var(--foreground);
+  --popover: #2f3140;
+  --popover-foreground: var(--foreground);
+
+  --primary: #bd93f9;
+  --primary-foreground: #282a36;
+
+  --secondary: #44475a;
+  --secondary-foreground: #f8f8f2;
+
+  --muted: #44475a;
+  --muted-foreground: #e2e2dc;
+
+  --accent: #ff79c6;
+  --accent-foreground: #1e1f29;
+
+  --destructive: #ff5555;
+
+  --border: #6272a4;
+  --input: #3b3e55;
+  --ring: #bd93f9;
+
+  --chart-1: #bd93f9;
+  --chart-2: #50fa7b;
+  --chart-3: #ff79c6;
+  --chart-4: #8be9fd;
+  --chart-5: #f1fa8c;
+
+  --sidebar: #2b2d3a;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #34364a;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: #303248;
+  --scrollbar-thumb: #44475a;
+  --scrollbar-thumb-hover: #51546a;
+
+  --primary-hover: color-mix(in oklch, var(--primary) 90%, white 10%);
+  --primary-active: color-mix(in oklch, var(--primary) 82%, white 18%);
+  --secondary-hover: color-mix(in oklch, var(--secondary) 92%, white 8%);
+  --accent-hover: color-mix(in oklch, var(--accent) 92%, white 8%);
+}
+

@@ -1,0 +1,121 @@
+/*
+ *   Copyright (c) 2025 Laith Alkhaddam aka Iconical.
+ *   All rights reserved.
+
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+
+ *   http://www.apache.org/licenses/LICENSE-2.0
+
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+:root[data-theme="github-dimmed"] {
+  --background: #f6f8fa;
+  --foreground: #24292e;
+
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
+
+  --primary: #0969da;
+  --primary-foreground: #ffffff;
+
+  --secondary: #eaeef2;
+  --secondary-foreground: #24292e;
+
+  --muted: #eef1f4;
+  --muted-foreground: #57606a;
+
+  --accent: #218bff;
+  --accent-foreground: #0a3069;
+
+  --destructive: #d1242f;
+
+  --border: #d0d7de;
+  --input: #eaeef2;
+  --ring: #0969da;
+
+  --chart-1: #0969da;
+  --chart-2: #2da44e;
+  --chart-3: #bf3989;
+  --chart-4: #953800;
+  --chart-5: #8250df;
+
+  --sidebar: #f6f8fa;
+  --sidebar-foreground: #24292e;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #eef1f4;
+  --sidebar-accent-foreground: #24292e;
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: #eef1f4;
+  --scrollbar-thumb: #d0d7de;
+  --scrollbar-thumb-hover: #b6bec6;
+
+  --primary-hover: color-mix(in oklch, var(--primary) 92%, black 8%);
+  --primary-active: color-mix(in oklch, var(--primary) 86%, black 14%);
+  --secondary-hover: color-mix(in oklch, var(--secondary) 92%, black 8%);
+  --accent-hover: color-mix(in oklch, var(--accent) 92%, black 8%);
+}
+
+.dark[data-theme="github-dimmed"] {
+  --background: #1c2128;
+  --foreground: #adbac7;
+
+  --card: #22272e;
+  --card-foreground: var(--foreground);
+  --popover: #22272e;
+  --popover-foreground: var(--foreground);
+
+  --primary: #539bf5;
+  --primary-foreground: #0d1117;
+
+  --secondary: #2d333b;
+  --secondary-foreground: #cdd9e5;
+
+  --muted: #2d333b;
+  --muted-foreground: #768390;
+
+  --accent: #6cb6ff;
+  --accent-foreground: #0d1117;
+
+  --destructive: #f47067;
+
+  --border: #373e47;
+  --input: #2d333b;
+  --ring: #539bf5;
+
+  --chart-1: #539bf5;
+  --chart-2: #57ab5a;
+  --chart-3: #b083f0;
+  --chart-4: #daaa3f;
+  --chart-5: #e5534b;
+
+  --sidebar: #22272e;
+  --sidebar-foreground: #adbac7;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #2b3138;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: #22272e;
+  --scrollbar-thumb: #373e47;
+  --scrollbar-thumb-hover: #48515b;
+
+  --primary-hover: color-mix(in oklch, var(--primary) 90%, white 10%);
+  --primary-active: color-mix(in oklch, var(--primary) 82%, white 18%);
+  --secondary-hover: color-mix(in oklch, var(--secondary) 92%, white 8%);
+  --accent-hover: color-mix(in oklch, var(--accent) 92%, white 8%);
+}
+

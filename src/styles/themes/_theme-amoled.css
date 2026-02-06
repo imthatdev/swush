@@ -1,0 +1,70 @@
+/*
+ *   Copyright (c) 2025 Laith Alkhaddam aka Iconical.
+ *   All rights reserved.
+
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+
+ *   http://www.apache.org/licenses/LICENSE-2.0
+
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+:root[data-theme="amoled"],
+.dark[data-theme="amoled"] {
+  --background: #000000;
+  --foreground: #e0e0e0;
+
+  --card: #060606;
+  --card-foreground: var(--foreground);
+  --popover: #060606;
+  --popover-foreground: var(--foreground);
+
+  --primary: #7164df;
+  --primary-foreground: #000000;
+
+  --secondary: #0d0d0d;
+  --secondary-foreground: #e0e0e0;
+
+  --muted: #0d0d0d;
+  --muted-foreground: #bdbdbd;
+
+  --accent: #e2e2ff;
+  --accent-foreground: #000000;
+
+  --destructive: #ff4d4d;
+
+  --border: #1a1a1a;
+  --input: #111111;
+  --ring: #7164df;
+
+  --chart-1: #7164df;
+  --chart-2: #ffbd2e;
+  --chart-3: #00e5ff;
+  --chart-4: #7c4dff;
+  --chart-5: #69f0ae;
+
+  --sidebar: #000000;
+  --sidebar-foreground: #e0e0e0;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #0a0a0a;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: #0a0a0a;
+  --scrollbar-thumb: #1a1a1a;
+  --scrollbar-thumb-hover: #2a2a2a;
+
+  --primary-hover: color-mix(in oklch, var(--primary) 90%, white 10%);
+  --primary-active: color-mix(in oklch, var(--primary) 82%, white 18%);
+  --secondary-hover: color-mix(in oklch, var(--secondary) 92%, white 8%);
+  --accent-hover: color-mix(in oklch, var(--accent) 92%, white 8%);
+}
+

@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16
+    container_name: swush-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: swush
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d swush"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - swush-db:/var/lib/postgresql/data:rw
+    networks:
+      - swush
+
+  app:
+    image: iconical/swush-ce:latest
+    container_name: swush-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ../.env
+
+    ports:
+      - "3419:3000"
+    volumes:
+      - swush-uploads:/data/uploads:rw
+    networks:
+      - swush
+
+volumes:
+  swush-db:
+  swush-uploads:
+
+networks:
+  swush:

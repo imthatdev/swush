@@ -1,0 +1,122 @@
+/*
+ *   Copyright (c) 2026 Laith Alkhaddam aka Iconical.
+ *   All rights reserved.
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+:root[data-theme="cedar"] {
+  --background: oklch(0.985 0.015 120);
+  --foreground: oklch(0.26 0.05 120);
+
+  --card: color-mix(in oklch, var(--background) 96%, black 4%);
+  --card-foreground: var(--foreground);
+
+  --popover: color-mix(in oklch, var(--background) 94%, black 6%);
+  --popover-foreground: var(--foreground);
+
+  --primary: #529420;
+  --primary-foreground: oklch(0.99 0.01 120);
+
+  --secondary: color-mix(in oklch, var(--background) 90%, var(--primary) 10%);
+  --secondary-foreground: oklch(0.3 0.05 120);
+
+  --muted: color-mix(in oklch, var(--background) 92%, black 8%);
+  --muted-foreground: oklch(0.56 0.04 120);
+
+  --accent: color-mix(in oklch, var(--primary) 18%, var(--background));
+  --accent-foreground: oklch(0.24 0.04 120);
+
+  --destructive: oklch(0.6 0.2 25);
+
+  --border: color-mix(in oklch, var(--foreground) 14%, var(--background));
+  --input: color-mix(in oklch, var(--foreground) 10%, var(--background));
+  --ring: color-mix(in oklch, var(--primary) 55%, white 45%);
+
+  --chart-1: oklch(0.6 0.16 135);
+  --chart-2: oklch(0.66 0.14 100);
+  --chart-3: oklch(0.58 0.14 160);
+  --chart-4: oklch(0.64 0.1 80);
+  --chart-5: oklch(0.7 0.12 50);
+
+  --sidebar: color-mix(in oklch, var(--background) 98%, black 2%);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: color-mix(in oklch, var(--primary) 12%, var(--background));
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: var(--muted);
+  --scrollbar-thumb: var(--border);
+  --scrollbar-thumb-hover: var(--ring);
+
+  --primary-hover: color-mix(in oklch, var(--primary) 92%, black 8%);
+  --primary-active: color-mix(in oklch, var(--primary) 86%, black 14%);
+  --secondary-hover: color-mix(in oklch, var(--secondary) 92%, black 8%);
+  --accent-hover: color-mix(in oklch, var(--accent) 92%, black 8%);
+}
+
+.dark[data-theme="cedar"] {
+  --background: oklch(0.19 0.04 120);
+  --foreground: oklch(0.96 0.02 120);
+
+  --card: color-mix(in oklch, var(--background) 90%, white 10%);
+  --card-foreground: var(--foreground);
+
+  --popover: color-mix(in oklch, var(--background) 86%, white 14%);
+  --popover-foreground: var(--foreground);
+
+  --primary: oklch(0.72 0.16 135);
+  --primary-foreground: oklch(0.18 0.03 120);
+
+  --secondary: color-mix(in oklch, var(--background) 85%, var(--primary) 15%);
+  --secondary-foreground: oklch(0.94 0.02 120);
+
+  --muted: color-mix(in oklch, var(--background) 88%, white 12%);
+  --muted-foreground: oklch(0.78 0.03 120);
+
+  --accent: color-mix(in oklch, var(--primary) 20%, var(--background));
+  --accent-foreground: oklch(0.94 0.02 120);
+
+  --destructive: oklch(0.66 0.18 25);
+
+  --border: color-mix(in oklch, white 22%, var(--background));
+  --input: color-mix(in oklch, white 18%, var(--background));
+  --ring: color-mix(in oklch, var(--primary) 65%, white 35%);
+
+  --chart-1: oklch(0.76 0.14 135);
+  --chart-2: oklch(0.74 0.14 100);
+  --chart-3: oklch(0.72 0.14 160);
+  --chart-4: oklch(0.72 0.12 80);
+  --chart-5: oklch(0.76 0.12 50);
+
+  --sidebar: color-mix(in oklch, var(--background) 88%, white 12%);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: color-mix(in oklch, var(--primary) 16%, var(--background));
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: var(--secondary);
+  --scrollbar-thumb: var(--border);
+  --scrollbar-thumb-hover: var(--ring);
+
+  --primary-hover: color-mix(in oklch, var(--primary) 90%, white 10%);
+  --primary-active: color-mix(in oklch, var(--primary) 82%, white 18%);
+  --secondary-hover: color-mix(in oklch, var(--secondary) 92%, white 8%);
+  --accent-hover: color-mix(in oklch, var(--accent) 92%, white 8%);
+}

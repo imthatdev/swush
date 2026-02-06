@@ -1,0 +1,62 @@
+/*
+ *   Copyright (c) 2025 Laith Alkhaddam aka Iconical.
+ *   All rights reserved.
+
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+
+ *   http://www.apache.org/licenses/LICENSE-2.0
+
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "yet-another-react-lightbox/styles.css";
+
+@import "../styles/_tokens.css";
+
+@import "../styles/_base.css";
+@import "../styles/_scrollbars.css";
+@import "../styles/_markdown.css";
+@import "../styles/_syntax.css";
+@import "../styles/_animations.css";
+
+@import "../styles/themes/_theme-amoled.css";
+@import "../styles/themes/_theme-bubblegum.css";
+@import "../styles/themes/_theme-aurora.css";
+@import "../styles/themes/_theme-cedar.css";
+@import "../styles/themes/_theme-scarlet.css";
+@import "../styles/themes/_theme-dracula.css";
+@import "../styles/themes/_theme-emerald.css";
+@import "../styles/themes/_theme-github-dimmed.css";
+@import "../styles/themes/_theme-github-v1.css";
+@import "../styles/themes/_theme-gruvbox.css";
+@import "../styles/themes/_theme-ember.css";
+@import "../styles/themes/_theme-lagoon.css";
+@import "../styles/themes/_theme-mint.css";
+@import "../styles/themes/_theme-nord.css";
+@import "../styles/themes/_theme-obsidian.css";
+@import "../styles/themes/_theme-orchid.css";
+@import "../styles/themes/_theme-rainbow.css";
+@import "../styles/themes/_theme-rose.css";
+@import "../styles/themes/_theme-palm.css";
+@import "../styles/themes/_theme-minimal.css";
+@import "../styles/themes/_theme-crimson.css";
+@import "../styles/themes/_theme-sapphire.css";
+@import "../styles/themes/_theme-solarized.css";
+@import "../styles/themes/_theme-sunset.css";
+@import "../styles/themes/_theme-violet.css";
+@import "../styles/themes/_theme-neon-noir.css";
+@import "../styles/themes/_theme-oceanic-deep.css";
+@import "../styles/themes/_theme-sakura-bloom.css";
+@import "../styles/themes/_theme-y2k-pastel.css";
+@import "../styles/themes/_theme-forest-emerald.css";
+@import "../styles/themes/_theme-glasslight.css";
+@import "../styles/themes/_theme-the-angel.css";
+@import "../styles/themes/_theme-the-devil.css";

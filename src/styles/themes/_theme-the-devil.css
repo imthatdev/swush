@@ -1,0 +1,84 @@
+/*
+ *   The Devil ꕀ bold, high contrast fiery theme
+ */
+:root[data-theme="the-devil"] {
+  --background: #fff7f7;
+  --foreground: #2b0a0a;
+
+  --card: #fff3f2;
+  --card-foreground: var(--foreground);
+  --popover: #fff3f2;
+  --popover-foreground: var(--foreground);
+
+  --primary: #ff3b3b; /* blood red */
+  --primary-foreground: #fff;
+
+  --secondary: #ffecec;
+  --secondary-foreground: #2b0a0a;
+
+  --muted: #fbeaea;
+  --muted-foreground: #6b2b2b;
+
+  --accent: #ff8a00; /* ember */
+  --accent-foreground: #2b0a0a;
+
+  --destructive: #b00020;
+
+  --border: #f0c7c7;
+  --input: #ffefef;
+  --ring: #ff6b6b;
+
+  --sidebar: #fff6f6;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #fff3f3;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: #fff4f4;
+  --scrollbar-thumb: #ffd0d0;
+  --scrollbar-thumb-hover: #ffb2b2;
+}
+
+.dark[data-theme="the-devil"] {
+  --background: #0b0707;
+  --foreground: #fff6f6;
+
+  --card: #120909;
+  --card-foreground: var(--foreground);
+  --popover: #120909;
+  --popover-foreground: var(--foreground);
+
+  --primary: #ff3b3b;
+  --primary-foreground: #1a0808;
+
+  --secondary: #2b0a0a;
+  --secondary-foreground: #fff6f6;
+
+  --muted: #2e0b0b;
+  --muted-foreground: #cfa8a8;
+
+  --accent: #ff8a00;
+  --accent-foreground: #1a1006;
+
+  --destructive: #ff0066;
+
+  --border: #3a0f0f;
+  --input: #1b0b0b;
+  --ring: #ff6b6b;
+
+  --sidebar: #0b0707;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #120909;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --scrollbar-track: #100808;
+  --scrollbar-thumb: #2a0a0a;
+  --scrollbar-thumb-hover: #3b0b0b;
+}
