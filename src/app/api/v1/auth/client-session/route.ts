@@ -21,6 +21,8 @@ import { db } from "@/db/client";
 import { apiKeySecrets, apikey, session } from "@/db/schemas";
 import { eq } from "drizzle-orm";
 import { decryptApiKey } from "@/lib/security/api-key-secrets";
+import { getCookies } from "better-auth/cookies";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -178,15 +180,19 @@ export async function POST(req: NextRequest) {
 
       let cookie: string;
       try {
-        const { getCookies } = await import("better-auth/cookies");
-        const { serializeSignedCookie } = await import("better-call");
         const cookies = getCookies(ctx.options);
-        cookie = await serializeSignedCookie(
-          cookies.sessionToken.name,
-          sessionToken,
-          ctx.secret,
-          cookies.sessionToken.attributes,
-        );
+        const attrs = cookies.sessionToken.attributes;
+        const cookieParts = [
+          `${cookies.sessionToken.name}=${sessionToken}`,
+          `Path=${attrs.path ?? "/"}`,
+          attrs.httpOnly ? "HttpOnly" : "",
+          attrs.secure ? "Secure" : "",
+          attrs.sameSite ? `SameSite=${attrs.sameSite}` : "",
+          attrs.domain ? `Domain=${attrs.domain}` : "",
+          attrs.maxAge ? `Max-Age=${attrs.maxAge}` : "",
+          attrs.expires ? `Expires=${attrs.expires.toUTCString()}` : "",
+        ].filter(Boolean);
+        cookie = cookieParts.join("; ");
       } catch (err) {
         const res = NextResponse.json(
           {

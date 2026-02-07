@@ -1,46 +1,59 @@
-FROM oven/bun:1-slim AS deps
+# ========================
+# Stage 1: Dependencies
+# ========================
+FROM node:20-alpine AS deps
 WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@latest --activate
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile
 
-COPY package.json bun.lock* ./
-RUN bun install --frozen-lockfile || bun install
-
-FROM oven/bun:1-slim AS builder
+# ========================
+# Stage 2: Build
+# ========================
+FROM node:20-alpine AS builder
 WORKDIR /app
-
+RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
 ENV NODE_ENV=production
+RUN pnpm exec next build
 
-RUN bun x next build
-
-FROM oven/bun:1-slim AS runner
+# ========================
+# Stage 3: Runner / Production
+# ========================
+FROM node:20-alpine AS runner
 WORKDIR /app
 
+# Install runtime deps
+RUN apk add --no-cache \
+    ffmpeg \
+    curl \
+    ca-certificates \
+    yt-dlp \
+    clamav \
+    clamav-daemon \
+    bash \
+ && rm -rf /var/cache/apk/*
+
+# Set environment
 ENV NODE_ENV=production \
     PORT=3000 \
     UPLOAD_ROOT=/data/uploads \
     FFMPEG_PATH=/usr/bin/ffmpeg \
     YTDLP_PATH=/usr/bin/yt-dlp
 
-RUN apt-get update -y \
-    && apt-get install -y --no-install-recommends \
-        ffmpeg curl ca-certificates yt-dlp clamav clamav-daemon \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /root/.bun/install/cache /root/.cache \
-    && freshclam || true
+# Update ClamAV database
+RUN freshclam
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=builder /app/.next ./.next
+# Copy app files
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/docker/entrypoint.sh ./docker/entrypoint.sh
-COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
-COPY --from=builder /app/src/db/schemas ./src/db/schemas
-COPY package.json next.config.* ./
 
+# Prepare folders & permissions
 RUN mkdir -p /app/.next/cache/images /data/uploads \
-    && chmod -R 755 /app/.next /data \
-    && chmod +x /app/docker/entrypoint.sh
+    && chmod +x ./docker/entrypoint.sh
 
 EXPOSE 3000
-CMD ["/app/docker/entrypoint.sh"]
+CMD ["node","server.js"]

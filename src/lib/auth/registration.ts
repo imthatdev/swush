@@ -18,7 +18,7 @@
 import "server-only";
 
 import type { GenericEndpointContext } from "@better-auth/core";
-import { APIError } from "better-call";
+import { APIError } from "better-auth";
 import { getServerSettings } from "@/lib/settings";
 import { getSetupStatus } from "@/lib/server/setup";
 

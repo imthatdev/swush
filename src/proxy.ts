@@ -60,11 +60,6 @@ function withCSP(
   return res;
 }
 
-const allowList = (process.env.CORS_ORIGIN || "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
 function isStaticAsset(pathname: string) {
   if (
     pathname.startsWith("/_next") ||
@@ -111,11 +106,13 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith("/api/")) {
     const origin = request.headers.get("origin") || "";
     const isTauriOrigin = origin.toLowerCase().startsWith("tauri://");
-    const isAllowed =
-      !origin ||
-      allowList.length === 0 ||
-      allowList.includes(origin) ||
-      isTauriOrigin;
+
+    const allowedOrigin = process.env.APP_URL || process.env.BETTER_AUTH_URL;
+    const isAllowed = origin === allowedOrigin || !isProd || isTauriOrigin;
+
+    if (!isAllowed) {
+      return new NextResponse("Bad origin", { status: 403 });
+    }
 
     if (request.method === "OPTIONS") {
       const pre = new NextResponse(null, { status: isAllowed ? 204 : 403 });

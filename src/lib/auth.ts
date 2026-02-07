@@ -55,8 +55,10 @@ const socialProviders = socialConfig.enabled
   ? await buildSocialProviders(socialConfig.providers)
   : undefined;
 const appName = process.env.APP_NAME || "Swush";
+const baseURL = process.env.APP_URL || process.env.BETTER_AUTH_URL;
 
 export const auth = betterAuth({
+  baseURL,
   database: drizzleAdapter(db, {
     provider: "pg",
   }),
@@ -71,7 +73,6 @@ export const auth = betterAuth({
     },
   },
   appName,
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
