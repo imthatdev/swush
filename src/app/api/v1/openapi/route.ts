@@ -29,6 +29,18 @@ export const GET = withApiError(async function GET() {
       )
       .join(" ");
 
+  const removedModules = new Set([
+    "notes",
+    "bookmarks",
+    "snippets",
+    "recipes",
+    "games",
+    "gamelists",
+  ]);
+
+  const removedPathPattern =
+    /^\/api\/v1\/(notes|bookmarks|snippets|recipes|games)(\/|$)/;
+
   const spec = {
     openapi: "3.1.0",
     info: {
@@ -4105,48 +4117,69 @@ export const GET = withApiError(async function GET() {
     },
   } as const;
 
-  const tagMap: Map<string, string> = new Map(
-    spec.tags.map((tag) => [tag.name, toTitleCase(tag.name)]),
+  const visibleTags = spec.tags.filter(
+    (tag) => !removedModules.has(tag.name.toLowerCase()),
   );
+
+  const tagMap: Map<string, string> = new Map(
+    visibleTags.map((tag) => [tag.name, toTitleCase(tag.name)]),
+  );
+
+  const normalizedPaths = Object.entries(spec.paths).reduce<
+    Record<string, unknown>
+  >((acc, [pathKey, methods]) => {
+    if (removedPathPattern.test(pathKey)) {
+      return acc;
+    }
+    if (!methods || typeof methods !== "object") {
+      acc[pathKey] = methods;
+      return acc;
+    }
+
+    const normalizedMethods = Object.entries(methods).reduce<
+      Record<string, unknown>
+    >((methodAcc, [methodKey, operation]) => {
+      if (!operation || typeof operation !== "object") {
+        methodAcc[methodKey] = operation;
+        return methodAcc;
+      }
+
+      const opTags = Array.isArray((operation as { tags?: string[] }).tags)
+        ? ((operation as { tags: string[] }).tags ?? [])
+        : [];
+
+      if (opTags.some((tagName) => removedModules.has(tagName.toLowerCase()))) {
+        return methodAcc;
+      }
+
+      if (!Array.isArray((operation as { tags?: string[] }).tags)) {
+        methodAcc[methodKey] = operation;
+        return methodAcc;
+      }
+
+      methodAcc[methodKey] = {
+        ...operation,
+        tags: opTags.map(
+          (tagName: string) => tagMap.get(tagName) ?? toTitleCase(tagName),
+        ),
+      };
+      return methodAcc;
+    }, {});
+
+    if (Object.keys(normalizedMethods).length > 0) {
+      acc[pathKey] = normalizedMethods;
+    }
+
+    return acc;
+  }, {});
 
   const normalizedSpec = {
     ...spec,
-    tags: spec.tags.map((tag) => ({
+    tags: visibleTags.map((tag) => ({
       ...tag,
       name: toTitleCase(tag.name),
     })),
-    paths: Object.fromEntries(
-      Object.entries(spec.paths).map(([pathKey, methods]) => {
-        if (!methods || typeof methods !== "object") {
-          return [pathKey, methods];
-        }
-
-        const normalizedMethods = Object.fromEntries(
-          Object.entries(methods).map(([methodKey, operation]) => {
-            if (!operation || typeof operation !== "object") {
-              return [methodKey, operation];
-            }
-
-            if (!Array.isArray(operation.tags)) {
-              return [methodKey, operation];
-            }
-
-            return [
-              methodKey,
-              {
-                ...operation,
-                tags: operation.tags.map(
-                  (tagName: string) =>
-                    tagMap.get(tagName) ?? toTitleCase(tagName),
-                ),
-              },
-            ];
-          }),
-        );
-
-        return [pathKey, normalizedMethods];
-      }),
-    ),
+    paths: normalizedPaths,
   };
 
   return NextResponse.json(normalizedSpec);

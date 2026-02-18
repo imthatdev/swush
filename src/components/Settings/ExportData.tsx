@@ -55,10 +55,6 @@ export default function ExportData() {
   const [selection, setSelection] = useState({
     includeFiles: true,
     includeFileBinaries: true,
-    includeNotes: true,
-    includeBookmarks: true,
-    includeSnippets: true,
-    includeRecipes: true,
     includeShortLinks: true,
   });
 
@@ -114,21 +110,12 @@ export default function ExportData() {
       include: {
         includeFiles,
         includeFileBinaries,
-        includeNotes: selection.includeNotes,
-        includeBookmarks: selection.includeBookmarks,
-        includeSnippets: selection.includeSnippets,
-        includeRecipes: selection.includeRecipes,
         includeShortLinks: selection.includeShortLinks,
       },
     };
 
     const anySelected =
-      payload.include.includeFiles ||
-      payload.include.includeNotes ||
-      payload.include.includeBookmarks ||
-      payload.include.includeSnippets ||
-      payload.include.includeRecipes ||
-      payload.include.includeShortLinks;
+      payload.include.includeFiles || payload.include.includeShortLinks;
     if (!anySelected) {
       toast.error("Pick at least one export type");
       return;
@@ -269,54 +256,6 @@ export default function ExportData() {
                   }
                 />
                 File binaries (actual files)
-              </label>
-              <label className="flex items-center gap-2">
-                <Checkbox
-                  checked={selection.includeNotes}
-                  onCheckedChange={(value) =>
-                    setSelection((prev) => ({
-                      ...prev,
-                      includeNotes: Boolean(value),
-                    }))
-                  }
-                />
-                Notes
-              </label>
-              <label className="flex items-center gap-2">
-                <Checkbox
-                  checked={selection.includeBookmarks}
-                  onCheckedChange={(value) =>
-                    setSelection((prev) => ({
-                      ...prev,
-                      includeBookmarks: Boolean(value),
-                    }))
-                  }
-                />
-                Bookmarks
-              </label>
-              <label className="flex items-center gap-2">
-                <Checkbox
-                  checked={selection.includeSnippets}
-                  onCheckedChange={(value) =>
-                    setSelection((prev) => ({
-                      ...prev,
-                      includeSnippets: Boolean(value),
-                    }))
-                  }
-                />
-                Snippets
-              </label>
-              <label className="flex items-center gap-2">
-                <Checkbox
-                  checked={selection.includeRecipes}
-                  onCheckedChange={(value) =>
-                    setSelection((prev) => ({
-                      ...prev,
-                      includeRecipes: Boolean(value),
-                    }))
-                  }
-                />
-                Recipes
               </label>
               <label className="flex items-center gap-2">
                 <Checkbox

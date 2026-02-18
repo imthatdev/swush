@@ -245,24 +245,6 @@ export default function AdminMetricsClient() {
                   />
                   <Legend />
                   <Bar
-                    dataKey="notes"
-                    name="Notes"
-                    stackId="content"
-                    fill="var(--color-chart-1)"
-                  />
-                  <Bar
-                    dataKey="snippets"
-                    name="Snippets"
-                    stackId="content"
-                    fill="var(--color-chart-2)"
-                  />
-                  <Bar
-                    dataKey="bookmarks"
-                    name="Bookmarks"
-                    stackId="content"
-                    fill="var(--color-chart-4)"
-                  />
-                  <Bar
                     dataKey="shortLinks"
                     name="Short Links"
                     stackId="content"

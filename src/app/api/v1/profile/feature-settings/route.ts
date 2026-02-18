@@ -114,7 +114,7 @@ export const PATCH = withApiError(async function PATCH(req: NextRequest) {
     if (!canEnable && body[key] === true) {
       return NextResponse.json(
         {
-          error: `${key} is disabled for your account, or any available for Swush Pro Version`,
+          error: `${key} is disabled for your account in this instance`,
         },
         { status: 403 },
       );

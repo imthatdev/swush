@@ -49,10 +49,6 @@ function buildDailySeed(startDate: Date) {
     users: 0,
     files: 0,
     storageBytes: 0,
-    notes: 0,
-    bookmarks: 0,
-    snippets: 0,
-    recipes: 0,
     shortLinks: 0,
   }));
 }

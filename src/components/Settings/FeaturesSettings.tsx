@@ -22,16 +22,7 @@ import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { apiV1 } from "@/lib/api-path";
 
-type FeatureKey =
-  | "notes"
-  | "bookmarks"
-  | "files"
-  | "shortlinks"
-  | "snippets"
-  | "recipes"
-  | "watchlist"
-  | "gamelists"
-  | "meetings";
+type FeatureKey = "files" | "shortlinks" | "watchlist" | "meetings";
 
 type FeatureState = {
   isEnabled: boolean;
@@ -46,50 +37,14 @@ const FEATURE_LIST: Array<{
 }> = [
   { key: "files", label: "Files", description: "Upload and manage files." },
   {
-    key: "notes",
-    label: "Notes",
-    description: "Not available in CE, only Pro edition.",
-    unavailable: true,
-  },
-  {
-    key: "bookmarks",
-    label: "Bookmarks",
-    description: "Not available in CE, only Pro edition.",
-    unavailable: true,
-  },
-  {
     key: "shortlinks",
     label: "Short links",
     description: "Create short URLs.",
   },
   {
-    key: "snippets",
-    label: "Snippets",
-    description: "Not available in CE, only Pro edition.",
-    unavailable: true,
-  },
-  {
-    key: "recipes",
-    label: "Recipes",
-    description: "Not available in CE, only Pro edition.",
-    unavailable: true,
-  },
-  {
     key: "watchlist",
     label: "Watchlist",
     description: "Track shows and movies.",
-  },
-  {
-    key: "gamelists",
-    label: "Game lists",
-    description: "Not available in CE, only Pro edition.",
-    unavailable: true,
-  },
-  {
-    key: "meetings",
-    label: "Meetings",
-    description: "Not available in CE, only Pro edition.",
-    unavailable: true,
   },
 ];
 

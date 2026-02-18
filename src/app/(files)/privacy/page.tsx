@@ -44,9 +44,8 @@ export default function PrivacyPage() {
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">What this app does</h2>
           <p className="text-sm text-muted-foreground">
-            Swush is a self-hosted vault for files, notes, bookmarks, snippets,
-            recipes, and short links. Your data is stored on the server that
-            hosts this instance.
+            Swush is a self-hosted vault for files and short links. Your data is
+            stored on the server that hosts this instance.
           </p>
         </section>
 

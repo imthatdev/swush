@@ -70,7 +70,6 @@ type MeetingContact = {
   id: string;
   name: string;
   email: string;
-  notes?: string | null;
 };
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

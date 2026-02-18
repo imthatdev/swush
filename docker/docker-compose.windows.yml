@@ -19,7 +19,7 @@ services:
       - swush
 
   app:
-    image: iconical/swush-ce:latest
+    image: iconical/swush:latest
     container_name: swush-app
     restart: unless-stopped
     depends_on:

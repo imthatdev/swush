@@ -165,10 +165,6 @@ export default function AdminUsersClient() {
   const [clearOpts, setClearOpts] = useState({
     filesMode: "none" as "none" | "all" | "exceptFavorites",
     links: false,
-    notes: false,
-    bookmarks: false,
-    snippets: false,
-    recipes: false,
     apiTokens: false,
   });
 
@@ -547,10 +543,6 @@ export default function AdminUsersClient() {
     setClearSaving(true);
     const options: Record<string, unknown> = {
       links: clearOpts.links,
-      notes: clearOpts.notes,
-      bookmarks: clearOpts.bookmarks,
-      snippets: clearOpts.snippets,
-      recipes: clearOpts.recipes,
       apiTokens: clearOpts.apiTokens,
     };
     if (clearOpts.filesMode === "all") options.filesAll = true;
@@ -1207,58 +1199,6 @@ export default function AdminUsersClient() {
                                           disabled={clearSaving}
                                         />
                                         Links
-                                      </label>
-                                      <label className="inline-flex items-center gap-2">
-                                        <Checkbox
-                                          checked={clearOpts.notes}
-                                          onCheckedChange={(v) =>
-                                            setClearOpts((o) => ({
-                                              ...o,
-                                              notes: !!v,
-                                            }))
-                                          }
-                                          disabled={clearSaving}
-                                        />
-                                        Notes
-                                      </label>
-                                      <label className="inline-flex items-center gap-2">
-                                        <Checkbox
-                                          checked={clearOpts.bookmarks}
-                                          onCheckedChange={(v) =>
-                                            setClearOpts((o) => ({
-                                              ...o,
-                                              bookmarks: !!v,
-                                            }))
-                                          }
-                                          disabled={clearSaving}
-                                        />
-                                        Bookmarks
-                                      </label>
-                                      <label className="inline-flex items-center gap-2">
-                                        <Checkbox
-                                          checked={clearOpts.snippets}
-                                          onCheckedChange={(v) =>
-                                            setClearOpts((o) => ({
-                                              ...o,
-                                              snippets: !!v,
-                                            }))
-                                          }
-                                          disabled={clearSaving}
-                                        />
-                                        Snippets
-                                      </label>
-                                      <label className="inline-flex items-center gap-2">
-                                        <Checkbox
-                                          checked={clearOpts.recipes}
-                                          onCheckedChange={(v) =>
-                                            setClearOpts((o) => ({
-                                              ...o,
-                                              recipes: !!v,
-                                            }))
-                                          }
-                                          disabled={clearSaving}
-                                        />
-                                        Recipes
                                       </label>
                                       <label className="inline-flex items-center gap-2">
                                         <Checkbox

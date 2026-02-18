@@ -219,7 +219,7 @@ export default function PasskeysManager() {
                   id="passkey-name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="MacBook Pro"
+                  placeholder="Work laptop"
                 />
               </div>
               <div className="grid gap-2">

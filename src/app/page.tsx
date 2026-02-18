@@ -124,7 +124,7 @@ export default async function Home() {
           {/* TODO: Handle versioning later */}
           {updateAvailable && latestVersion ? (
             <Link
-              href="https://github.com/imthatdev/swush-ce/releases/latest"
+              href="https://github.com/imthatdev/swush/releases/latest"
               target="_blank"
               rel="noreferrer noopener"
               className="inline-flex items-center gap-1 rounded border px-2 bg-destructive text-primary-foreground py-0.5 hover:bg-accent"

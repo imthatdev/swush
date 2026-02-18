@@ -150,8 +150,6 @@ function isApiKeyRequestAllowed(req: NextRequest) {
     { prefix: "/api/v1/upload", methods: ["POST", "PUT"] },
     { prefix: "/api/v1/shorten", methods: ["POST"] },
     { prefix: "/api/v1/shorten/p", methods: ["POST"] },
-    { prefix: "/api/v1/notes", methods: ["POST"] },
-    { prefix: "/api/v1/bookmarks", methods: ["POST"] },
     { prefix: "/api/graphql", methods: ["POST"] },
     { prefix: "/api/v1/avatar/upload", methods: ["POST"] },
   ];

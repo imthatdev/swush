@@ -34,4 +34,4 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: iconical/swush-ce:${{ env.VERSION }},iconical/swush-ce:latest
+          tags: iconical/swush:${{ env.VERSION }},iconical/swush:latest

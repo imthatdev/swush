@@ -1,11 +1,9 @@
 # Swush
 
-Swush is a secure, self-hosted full‑stack file manager and personal dashboard built with Next.js, TypeScript, TailwindCSS, and Better Auth. It offers a unified platform to manage your bookmarks, notes, snippets, recipes, watchlist (anime, movies, TV shows), games collection, and more; all with privacy and control in mind.
+Swush is a secure, self-hosted full‑stack file manager and personal dashboard built with Next.js, TypeScript, TailwindCSS, and Better Auth. It offers a unified platform to manage your files, short links, upload requests, watchlist (anime, movies, TV shows), and more; all with privacy and control in mind.
 
 
 ## ✨ Features
-
-> **Note:** The following features are [***Pro-only***](https://buymeacoffee.com/iconical/e/507392) and not available in the Community Edition (CE): **Bookmarks, Snippets, Recipes, Notes, and Games Collection**.
 
 ### Authentication & Security
 - Better Auth sessions with optional 2FA (TOTP).
@@ -14,7 +12,7 @@ Swush is a secure, self-hosted full‑stack file manager and personal dashboard 
 - Admin capabilities to promote/demote users and protect API endpoints.
 
 ### Content Management Modules
-- Files, Short Links, Bookmarks*, Snippets*, Recipes*, Notes*, Upload Requests.
+- Files, Short Links, Upload Requests.
 - Pagination, bulk selection and deletion.
 - Slug support for friendly URLs.
 
@@ -30,13 +28,6 @@ Swush is a secure, self-hosted full‑stack file manager and personal dashboard 
 - Bulk actions (delete, change visibility).
 - Public sharing via `/l/username` with optional privacy toggle for each show.
 - Import data from AniList.
-
-### Games Collection*
-- Add games manually or import from Steam.
-- Track status: playing, completed, backlog, dropped.
-- Bulk actions and pagination.
-- Adding personal notes.
-- Public sharing via `/g/username` with optional privacy toggle for each game.
 
 ### UI/UX
 - Responsive design powered by Tailwind CSS v4.
@@ -62,7 +53,7 @@ Swush is a secure, self-hosted full‑stack file manager and personal dashboard 
 
 ### 1. Clone the repository
 ```bash
-pnpm x degit imthatdev/swush-ce
+pnpm x degit imthatdev/swush
 cd swush
 ```
 
@@ -205,4 +196,4 @@ APACHE 2.0 © 2026 Iconical
 
 ### 🙏 To Note Again
 
-> Bookmarks, Snippets, Recipes, and Notes are Pro edition features and not available in the Community Edition (CE). You can check out the Pro edition in the demo or consider upgrading to Pro [here](https://buymeacoffee.com/iconical/e/507392).
+> Swush CE is fully free and open-source. There are no paid tiers or upgrade requirements to use it.

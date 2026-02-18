@@ -20,12 +20,9 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
-  IconBookmarkPlus,
-  IconCode,
   IconCopy,
   IconHash,
   IconLoader2,
-  IconNote,
   IconPin,
   IconPinFilled,
   IconStar,
@@ -77,6 +74,20 @@ const PINNED_KEY = "globalSearch.pins";
 const MAX_RECENTS = 6;
 const MAX_RECENT_ITEMS = 12;
 const MIN_QUERY_LENGTH = 2;
+const HIDDEN_TYPES = new Set([
+  "note",
+  "notes",
+  "snippet",
+  "snippets",
+  "bookmark",
+  "bookmarks",
+  "recipe",
+  "recipes",
+  "game",
+  "games",
+  "gamelist",
+  "gamelists",
+]);
 
 function loadRecents(): string[] {
   if (typeof window === "undefined") return [];
@@ -183,11 +194,8 @@ function savePins(next: Record<string, SearchItem>) {
 
 function normalizeTypeToken(raw: string) {
   const token = raw.toLowerCase();
-  if (token.startsWith("note")) return "note";
   if (token.startsWith("file")) return "file";
-  if (token.startsWith("recipe")) return "recipe";
-  if (token.startsWith("snippet")) return "snippet";
-  if (token.startsWith("bookmark")) return "bookmark";
+  if (token.startsWith("short")) return "shortlink";
   return "";
 }
 
@@ -338,7 +346,9 @@ export default function GlobalCommand() {
   React.useEffect(() => {
     if (!open) return;
     setRecents(loadRecents());
-    setRecentItems(loadRecentItems());
+    setRecentItems(
+      loadRecentItems().filter((item) => !HIDDEN_TYPES.has(item.type)),
+    );
     setAnalytics(loadAnalytics());
     setPins(loadPins());
   }, [open]);
@@ -425,7 +435,14 @@ export default function GlobalCommand() {
         return r.json();
       })
       .then((json) => {
-        const nextGroups = json.groups || [];
+        const nextGroups = (json.groups || [])
+          .map((group: SearchGroup) => ({
+            ...group,
+            items: (group.items || []).filter(
+              (item) => !HIDDEN_TYPES.has(item.type),
+            ),
+          }))
+          .filter((group: SearchGroup) => group.items.length > 0);
         cacheRef.current.set(query, { groups: nextGroups, ts: Date.now() });
         setGroups(nextGroups);
         saveRecent(query);
@@ -555,7 +572,7 @@ export default function GlobalCommand() {
       <CommandInput
         value={q}
         onValueChange={setQ}
-        placeholder="Search files, notes, recipes… (⌘K)"
+        placeholder="Search files and links… (⌘K)"
         autoFocus
         className={cn((loading || typing) && "animate-pulse")}
       />
@@ -583,39 +600,15 @@ export default function GlobalCommand() {
               </span>
             </CommandItem>
             <CommandItem
-              value="Quick add note"
+              value="Short links"
               onSelect={() => {
-                router.push("/notes?new=1");
+                router.push("/shortener");
                 setOpen(false);
               }}
             >
               <span className="truncate w-full flex gap-2 items-center">
-                <IconNote />
-                Write a note
-              </span>
-            </CommandItem>
-            <CommandItem
-              value="Quick add snippet"
-              onSelect={() => {
-                router.push("/snippets?new=1");
-                setOpen(false);
-              }}
-            >
-              <span className="truncate w-full flex gap-2 items-center">
-                <IconCode />
-                Save a snippet
-              </span>
-            </CommandItem>
-            <CommandItem
-              value="Quick add bookmark"
-              onSelect={() => {
-                router.push("/bookmarks?new=1");
-                setOpen(false);
-              }}
-            >
-              <span className="truncate w-full flex gap-2 items-center">
-                <IconBookmarkPlus />
-                Add a bookmark
+                <IconHash />
+                Open short links
               </span>
             </CommandItem>
           </CommandGroup>

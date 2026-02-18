@@ -44,9 +44,9 @@ export default function TermsPage() {
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">Overview</h2>
           <p className="text-sm text-muted-foreground">
-            Swush is a self-hosted app for private file sharing, notes, and
-            content management. These terms apply to all users of this instance.
-            By using the app, you agree to follow these terms and any instance
+            Swush is a self-hosted app for private file sharing and content
+            management. These terms apply to all users of this instance. By
+            using the app, you agree to follow these terms and any instance
             specific rules set by the administrator.
           </p>
         </section>

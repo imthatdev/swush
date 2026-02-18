@@ -671,10 +671,6 @@ const ClearOptionsSchema = z.object({
   filesAll: z.boolean().optional(),
   filesExceptFavorites: z.boolean().optional(),
   links: z.boolean().optional(),
-  notes: z.boolean().optional(),
-  bookmarks: z.boolean().optional(),
-  snippets: z.boolean().optional(),
-  recipes: z.boolean().optional(),
   apiTokens: z.boolean().optional(),
 });
 

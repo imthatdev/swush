@@ -28,7 +28,7 @@ function isNewer(latest: string, current: string) {
 async function getLatestVersionFromGitHub(): Promise<string | null> {
   try {
     const res = await fetch(
-      "https://api.github.com/repos/imthatdev/swush-ce/releases/latest",
+      "https://api.github.com/repos/imthatdev/swush/releases/latest",
       { next: { revalidate: 60 * 60 } },
     );
     if (!res.ok) return null;
@@ -50,4 +50,3 @@ export async function getVersionInfo(): Promise<VersionInfo> {
 
   return { currentVersion, latestVersion, updateAvailable };
 }
-

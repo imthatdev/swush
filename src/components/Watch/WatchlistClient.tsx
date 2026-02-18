@@ -518,11 +518,11 @@ export default function WatchClient({ username }: { username: string }) {
           x.id === notesItem.id ? { ...x, notes: updated.notes } : x,
         ),
       );
-      toast.success("Notes saved");
+      toast.success("Details saved");
       setOpenNotes(false);
       setNotesItem(null);
     } else {
-      toast.error("Failed to save notes");
+      toast.error("Failed to save details");
     }
   }
 
@@ -858,7 +858,7 @@ export default function WatchClient({ username }: { username: string }) {
                           variant="outline"
                           className="backdrop-blur-md"
                           onClick={() => openNotesEditor(it)}
-                          title="Edit notes"
+                          title="Edit details"
                         >
                           <IconNote />
                         </Button>
@@ -1196,7 +1196,7 @@ export default function WatchClient({ username }: { username: string }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Edit Notes{notesItem ? ` ꕀ ${notesItem.title}` : ""}
+              Edit Details{notesItem ? ` ꕀ ${notesItem.title}` : ""}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">

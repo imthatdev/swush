@@ -84,5 +84,4 @@ Packed with essentials to make your hosting life easy and stylish. 🚀
 - 🧭 Sharable links, QR upgrades, and public share polish
 - ...and much more!
 
-\* Features marked with an asterisk are Pro edition only and not included in CE.
 \*\* Anonymous sharing is not pure privacy, as it still exposes some metadata and can be altered from URL parameters.

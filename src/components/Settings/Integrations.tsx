@@ -212,7 +212,7 @@ export function Integrations() {
         <div>
           <h2 className="text-lg font-semibold">Integrations</h2>
           <p className="text-sm text-muted-foreground">
-            Create webhooks for uploads, links, and notes.
+            Create webhooks for uploads and links.
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

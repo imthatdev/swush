@@ -34,9 +34,6 @@ const buildShortcuts = (isMac: boolean) => {
   return [
     { keys: [primary, "K"], desc: "Global search" },
     { keys: [primary, alt, "U"], desc: "Upload file" },
-    { keys: [primary, alt, "N"], desc: "New note" },
-    { keys: [primary, alt, "S"], desc: "New snippet" },
-    { keys: [primary, alt, "B"], desc: "New bookmark" },
     { keys: ["Shift", "?"], desc: "Keyboard shortcuts" },
     { keys: ["Esc"], desc: "Close dialogs" },
   ];
@@ -82,24 +79,6 @@ export default function KeyboardShortcuts() {
         e.preventDefault();
         setOpen(false);
         router.push("/upload");
-        return;
-      }
-      if (e.code === "KeyN") {
-        e.preventDefault();
-        setOpen(false);
-        router.push("/notes?new=1");
-        return;
-      }
-      if (e.code === "KeyS") {
-        e.preventDefault();
-        setOpen(false);
-        router.push("/snippets?new=1");
-        return;
-      }
-      if (e.code === "KeyB") {
-        e.preventDefault();
-        setOpen(false);
-        router.push("/bookmarks?new=1");
       }
     };
 

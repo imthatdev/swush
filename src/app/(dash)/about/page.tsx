@@ -17,16 +17,12 @@
 
 import {
   IconBook2,
-  IconBookmark,
-  IconChefHat,
   IconBrandChrome,
   IconClock,
-  IconCode,
   IconFile,
   IconBrandGithub,
   IconBolt,
   IconLock,
-  IconNote,
   IconPlayerPlay,
   IconSearch,
   IconDatabase,
@@ -38,6 +34,7 @@ import {
   IconUpload,
   IconCalendarEvent,
   IconCoffee,
+  IconCode,
 } from "@tabler/icons-react";
 import type { Metadata } from "next";
 import { Badge } from "@/components/ui/badge";
@@ -82,18 +79,6 @@ export default function AboutPage() {
                   <IconLink size={16} /> Short links
                 </Badge>
                 <Badge className="gap-1">
-                  <IconChefHat size={16} /> Recipes
-                </Badge>
-                <Badge className="gap-1">
-                  <IconCode size={16} /> Snippets
-                </Badge>
-                <Badge className="gap-1">
-                  <IconBookmark size={16} /> Bookmarks
-                </Badge>
-                <Badge className="gap-1">
-                  <IconNote size={16} /> Notes
-                </Badge>
-                <Badge className="gap-1">
                   <IconQrcode size={16} /> QR Share
                 </Badge>
                 <Badge className="gap-1">
@@ -110,9 +95,9 @@ export default function AboutPage() {
                 </Badge>
               </div>
               <p className="mx-auto max-w-2xl text-muted-foreground">
-                A secure dashboard for files, links, notes, recipes, watchlists,
-                and more. Create, search, share (public or password‑protected),
-                and ship beautiful public pages with QR + UTM baked in.
+                A secure dashboard for files, links, and watchlists, and more.
+                Create, search, share (public or password‑protected), and ship
+                beautiful public pages with QR + UTM baked in.
               </p>
             </div>
 
@@ -160,8 +145,10 @@ function AboutSection() {
           </CardHeader>
           <CardContent className="text-sm space-y-2">
             <ul className="list-disc pl-5 space-y-1">
-              <li>Snippets: title, language, code, description.</li>
-              <li>Recipes: ingredients, steps, images, servings, time.</li>
+              <li>Files and links stay organized and searchable.</li>
+              <li>
+                Fast upload flows with clear metadata and sharing controls.
+              </li>
               <li>Funny slugs auto‑generated for pretty URLs.</li>
             </ul>
           </CardContent>
@@ -179,7 +166,7 @@ function AboutSection() {
           <CardContent className="text-sm space-y-2">
             <ul className="list-disc pl-5 space-y-1">
               <li>Live search across titles, descriptions & body.</li>
-              <li>Recipe tags for quick filtering.</li>
+              <li>Tags and filters for quick narrowing.</li>
               <li>Lightweight API + DB queries with indexes in mind.</li>
             </ul>
           </CardContent>
@@ -246,18 +233,17 @@ function AboutSection() {
         <Card className="border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <IconPlayerPlay size={18} /> “Start Cooking” Mode
+              <IconPlayerPlay size={18} /> Playback controls
             </CardTitle>
             <CardDescription>
-              Local client‑side timers per step with smart defaults.
+              Local client‑side controls with practical defaults.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-sm space-y-3">
             <p>
-              Public recipes include a step‑by‑step runner. Each step can parse
-              minutes from text (e.g. “Bake 30 minutes”), auto‑arming a timer.
-              You can start, pause, reset, mark done, and tweak minutes on the
-              fly; no account required.
+              Media playback is designed for quick controls. You can start,
+              pause, reset, and adjust behavior on the fly with no account
+              required for public pages.
             </p>
             <div className="grid grid-cols-2 gap-3 text-xs">
               <FeatureChip
@@ -366,16 +352,16 @@ function HowToSection() {
         <Card className="border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <IconBookmark size={18} /> Shorten & Bookmark links
+              <IconLink size={18} /> Shorten links
             </CardTitle>
             <CardDescription>
-              Turn long URLs into neat slugs and save favorites.
+              Turn long URLs into neat slugs and share them anywhere.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-sm space-y-2">
             <ol className="list-decimal pl-5 space-y-1">
               <li>
-                Open <span className="font-medium">Bookmarks</span>.
+                Open <span className="font-medium">Short Links</span>.
               </li>
               <li>Paste your URL and add title/description.</li>
               <li>
@@ -392,42 +378,17 @@ function HowToSection() {
         <Card className="border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <IconCode size={18} /> Code Snippets
+              <IconUpload size={18} /> Upload links & requests
             </CardTitle>
             <CardDescription>
-              Store code with language awareness and pretty URLs.
+              Collect uploads from guests with branded request pages.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-sm space-y-2">
             <ol className="list-decimal pl-5 space-y-1">
-              <li>
-                Go to <span className="font-medium">Snippets</span> and click{" "}
-                <span className="font-medium">New</span>.
-              </li>
-              <li>Set title, language, and paste your code.</li>
-              <li>(Optional) Add a description and make it public.</li>
-              <li>Share the link or keep it private.</li>
-            </ol>
-          </CardContent>
-        </Card>
-
-        <Card className="border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <IconChefHat size={18} /> Recipes & “Start Cooking”
-            </CardTitle>
-            <CardDescription>
-              Write ingredients/steps and run them with timers.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-sm space-y-2">
-            <ol className="list-decimal pl-5 space-y-1">
-              <li>Create a recipe with ingredients, steps, images.</li>
-              <li>Public recipe pages include a per‑step timer runner.</li>
-              <li>
-                Click <span className="font-medium">Start Cooking</span> to
-                auto‑parse durations.
-              </li>
+              <li>Create and share request links.</li>
+              <li>Review uploads and approve what you need.</li>
+              <li>Keep everything inside your own vault.</li>
             </ol>
           </CardContent>
         </Card>
@@ -440,7 +401,7 @@ function HowToSection() {
               <IconWorld size={18} /> Browser Extension
             </CardTitle>
             <CardDescription>
-              “Swush Companion” for quick uploads, notes, and bookmarks.
+              “Swush Companion” for quick uploads.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-sm space-y-2">
@@ -453,9 +414,7 @@ function HowToSection() {
                 Enter your instance URL and API token from{" "}
                 <span className="font-medium">Settings → API</span>.
               </li>
-              <li>
-                Use hotkeys: Alt+B (bookmark), Alt+N (note), Alt+U (upload).
-              </li>
+              <li>Use hotkeys: Alt+U (upload).</li>
               <li>
                 Right‑click context menu to send the current page to Swush.
               </li>
@@ -478,7 +437,7 @@ function HowToSection() {
         <Card className="border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <IconPlayerPlay size={18} /> Games, Watchlists & Imports
+              <IconPlayerPlay size={18} /> Watchlists & Imports
             </CardTitle>
             <CardDescription>
               Track your media and pull playtime where available.
@@ -487,17 +446,14 @@ function HowToSection() {
           <CardContent className="text-sm space-y-2">
             <ol className="list-decimal pl-5 space-y-1">
               <li>
-                Open <span className="font-medium">Games</span> or{" "}
-                <span className="font-medium">Watchlist</span>.
+                Open <span className="font-medium">Watchlist</span>.
               </li>
               <li>
                 Add entries manually or via{" "}
                 <span className="font-medium">Import</span>
               </li>
               <li>Fetch playtime where enabled.</li>
-              <li>
-                Add personal notes, mark favorites, and toggle public/private.
-              </li>
+              <li>Mark favorites and toggle public/private visibility.</li>
             </ol>
           </CardContent>
         </Card>
