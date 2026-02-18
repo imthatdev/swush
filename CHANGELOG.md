@@ -60,7 +60,7 @@ A quick follow-up to the initial release, addressing some minor bugs and improvi
 
 **Released: February 6, 2026**
 
-The **very first release** of Swush CE; my self-hosted file & media vault.
+The **very first release** of Swush; my self-hosted file & media vault.
 Packed with essentials to make your hosting life easy and stylish. 🚀
 
 ### 🆕 Highlights

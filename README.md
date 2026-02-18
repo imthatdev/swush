@@ -153,6 +153,8 @@ so `/hls/*` is cached while all other routes stay bypassed.
 
 ![Watchlist Screenshot](public/images/docs/watchlist.png)
 
+### Coming Soon: (Games Collection, Snippets, and more)
+
 ![Games Collection Screenshot](public/images/docs/games.png)
 
 ![Content Management Screenshot](public/images/docs/content.png)
@@ -196,4 +198,4 @@ APACHE 2.0 © 2026 Iconical
 
 ### 🙏 To Note Again
 
-> Swush CE is fully free and open-source. There are no paid tiers or upgrade requirements to use it.
+> Swush is fully free and open-source. There are no paid tiers or upgrade requirements to use it.
