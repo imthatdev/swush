@@ -59,3 +59,4 @@ docs/
 coverage/
 x_cookies.txt
 *.pem
+/issues

@@ -86,9 +86,6 @@ export function FileContextMenu({
     return base ? `${base}${path}` : path;
   };
   const shareLink = resolveUrl(`/v/${file.slug}`);
-  const anonymousShareLink = file.isPublic
-    ? resolveUrl(`/v/${file.slug}?anon=1`)
-    : "";
   const isStreamable =
     isMedia("audio", file.mimeType, file.originalName) ||
     isMedia("video", file.mimeType, file.originalName);
@@ -309,19 +306,6 @@ export function FileContextMenu({
             >
               <IconLink className="mr-2 h-4 w-4 text-indigo-500" />
               Copy View URL
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() =>
-                handleCopy(
-                  anonymousShareLink,
-                  "Copied Anonymous View URL to clipboard",
-                  "Anonymous share hides your profile, but content may still reveal identity.",
-                )
-              }
-              disabled={!file.isPublic}
-            >
-              <IconEyeOff className="mr-2 h-4 w-4 text-orange-500" />
-              Copy Anonymous URL
             </DropdownMenuItem>
             <ShareQrButton
               url={shareLink}

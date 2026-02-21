@@ -22,6 +22,7 @@ import { IconLoader2 } from "@tabler/icons-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { MaxViewsFields } from "@/components/Common/MaxViewsFields";
 import {
   Dialog,
@@ -56,6 +57,7 @@ export function FileRenameDialog({
   const [ext, setExt] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
+  const [anonymousShareEnabled, setAnonymousShareEnabled] = useState(false);
   const [maxViews, setMaxViews] = useState<number | "">("");
   const [maxViewsAction, setMaxViewsAction] = useState<
     "make_private" | "delete" | ""
@@ -77,6 +79,9 @@ export function FileRenameDialog({
   const currentDesc = file.description ?? "";
   const descChanged = trimmedDesc !== currentDesc;
 
+  const currentAnonymous = file.anonymousShareEnabled === true;
+  const anonChanged = anonymousShareEnabled !== currentAnonymous;
+
   const nextMaxViews =
     typeof maxViews === "number" ? Math.max(1, Math.floor(maxViews)) : null;
   const nextMaxViewsAction = nextMaxViews ? maxViewsAction || null : null;
@@ -90,6 +95,7 @@ export function FileRenameDialog({
     nameChanged ||
     slugChanged ||
     descChanged ||
+    anonChanged ||
     maxViewsChanged ||
     maxViewsActionChanged;
 
@@ -112,6 +118,7 @@ export function FileRenameDialog({
     setExt(ext);
     setSlug(nextFile.slug ?? "");
     setDescription(nextFile.description ?? "");
+    setAnonymousShareEnabled(nextFile.anonymousShareEnabled === true);
     const parsedMaxViews = parseMaxViews(nextFile.maxViews);
     setMaxViews(parsedMaxViews);
     setMaxViewsAction(parsedMaxViews ? (nextFile.maxViewsAction ?? "") : "");
@@ -136,6 +143,7 @@ export function FileRenameDialog({
       originalName?: string;
       newSlug?: string;
       description?: string | null;
+      anonymousShareEnabled?: boolean;
       maxViews?: number | null;
       maxViewsAction?: "make_private" | "delete" | null;
     } = {};
@@ -161,6 +169,9 @@ export function FileRenameDialog({
     if (trimmedDesc !== currentDesc) {
       payload.description = trimmedDesc.length ? trimmedDesc : null;
     }
+    if (anonChanged) {
+      payload.anonymousShareEnabled = anonymousShareEnabled;
+    }
 
     if (nextMaxViews !== currentMaxViews) {
       payload.maxViews = nextMaxViews;
@@ -176,6 +187,7 @@ export function FileRenameDialog({
       !payload.originalName &&
       !payload.newSlug &&
       payload.description === undefined &&
+      payload.anonymousShareEnabled === undefined &&
       payload.maxViews === undefined &&
       payload.maxViewsAction === undefined
     ) {
@@ -204,6 +216,10 @@ export function FileRenameDialog({
           payload.description !== undefined
             ? payload.description
             : file.description,
+        anonymousShareEnabled:
+          payload.anonymousShareEnabled !== undefined
+            ? payload.anonymousShareEnabled
+            : file.anonymousShareEnabled,
         maxViews:
           payload.maxViews !== undefined ? payload.maxViews : file.maxViews,
         maxViewsAction:
@@ -306,6 +322,25 @@ export function FileRenameDialog({
             Optional. This helps search and context.
           </span>
         </div>
+
+        <div className="flex items-center justify-between rounded-md border px-3 py-2">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">Anonymous share</p>
+            <p className="text-xs text-muted-foreground">
+              Hide owner profile on the public view page.
+            </p>
+          </div>
+          <Switch
+            checked={anonymousShareEnabled}
+            onCheckedChange={setAnonymousShareEnabled}
+            disabled={!file.isPublic || saving || clearing}
+          />
+        </div>
+        {!file.isPublic ? (
+          <p className="text-[11px] text-muted-foreground">
+            Make the file public to enable anonymous share.
+          </p>
+        ) : null}
 
         <MaxViewsFields
           currentViews={file.views ?? 0}

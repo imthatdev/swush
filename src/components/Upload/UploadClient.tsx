@@ -21,6 +21,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import type { SetStateAction } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FolderMeta, TagMeta } from "@/types";
 import { normalizeTag } from "@/components/Upload/FolderInputWithSuggestions";
 import { formatBytes, splitFilename } from "@/lib/helpers";
@@ -95,10 +96,10 @@ export default function UploadClient() {
   const { prefs, loading: prefsLoading } = useUserPreferences();
   const { features, loading: featuresLoading } = useUserFeatures();
   const filesEnabled = features.files?.isEnabled ?? true;
+  const [summaryReady, setSummaryReady] = useState(false);
 
   const toMb = (bytes: number) => Math.round((bytes || 0) / 1_000_000);
   const formatMbWhole = (mb: number) => `${Math.round(mb)} MB`;
-
   const effectiveRemainingStorageMb = useMemo(() => {
     if (typeof remainingStorageMb === "number") return remainingStorageMb;
     if (typeof maxStorageMb === "number") {
@@ -486,10 +487,25 @@ export default function UploadClient() {
   }, [defaultNameConvention, defaultSlugConvention]);
 
   useEffect(() => {
-    fetchSummary();
+    let active = true;
+    const initSummary = async () => {
+      await fetchSummary();
+      if (active) setSummaryReady(true);
+    };
+    void initSummary();
+
+    return () => {
+      active = false;
+    };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (summaryReady) return;
+    if (featuresLoading) return;
+    setSummaryReady(true);
+  }, [featuresLoading, summaryReady]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!filesEnabled) {
@@ -868,6 +884,8 @@ export default function UploadClient() {
     addFilesToQueue(Array.from(list));
   };
 
+  const actionsHydrating = featuresLoading || !summaryReady;
+
   return (
     <PageLayout
       title="Upload Files"
@@ -880,65 +898,77 @@ export default function UploadClient() {
               allowRemoteUpload && "md:grid-cols-4",
             )}
           >
-            {allowRemoteUpload && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setRemoteDialogOpen(true)}
-                disabled={!filesEnabled || featuresLoading}
-              >
-                <IconWorldUpload /> Remote
-              </Button>
-            )}
-            {filesEnabled ? (
-              <Button asChild variant="secondary" size="sm">
-                <Link href="/upload-links">
-                  <IconUpload /> Guest Links
-                </Link>
-              </Button>
+            {actionsHydrating ? (
+              <>
+                <Skeleton className="h-9 w-full rounded-md" />
+                <Skeleton className="h-9 w-full rounded-md" />
+                <Skeleton className="h-9 w-full rounded-md" />
+                <Skeleton className="h-9 w-full rounded-md" />
+                <Skeleton className="h-9 w-full rounded-md col-span-2 md:col-span-4" />
+              </>
             ) : (
-              <Button variant="secondary" size="sm" disabled>
-                <IconUpload /> Guest Links
-              </Button>
+              <>
+                {allowRemoteUpload && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setRemoteDialogOpen(true)}
+                    disabled={!filesEnabled || featuresLoading}
+                  >
+                    <IconWorldUpload /> Remote
+                  </Button>
+                )}
+                {filesEnabled ? (
+                  <Button asChild variant="secondary" size="sm">
+                    <Link href="/upload-links">
+                      <IconUpload /> Guest Links
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button variant="secondary" size="sm" disabled>
+                    <IconUpload /> Guest Links
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setBulkOpen(true)}
+                  disabled={isUploading || files.length === 0 || !filesEnabled}
+                >
+                  Bulk Update
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={isUploading || files.length === 0}
+                  onClick={() => {
+                    for (const url of previewUrls.current.values()) {
+                      URL.revokeObjectURL(url);
+                    }
+                    previewUrls.current.clear();
+                    setFiles([]);
+                    toast.success("All files cleared.");
+                  }}
+                >
+                  Clear Files
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleUpload}
+                  disabled={
+                    isUploading ||
+                    files.length === 0 ||
+                    !filesEnabled ||
+                    featuresLoading
+                  }
+                  className={cn(
+                    allowRemoteUpload && "last:col-span-2 md:last:col-span-4",
+                  )}
+                >
+                  {isUploading ? "Uploading..." : "Upload All"}
+                </Button>
+              </>
             )}
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setBulkOpen(true)}
-              disabled={isUploading || files.length === 0 || !filesEnabled}
-            >
-              Bulk Update
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={isUploading || files.length === 0}
-              onClick={() => {
-                for (const url of previewUrls.current.values()) {
-                  URL.revokeObjectURL(url);
-                }
-                previewUrls.current.clear();
-                setFiles([]);
-                toast.success("All files cleared.");
-              }}
-            >
-              Clear Files
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleUpload}
-              disabled={
-                isUploading ||
-                files.length === 0 ||
-                !filesEnabled ||
-                featuresLoading
-              }
-              className={cn(
-                allowRemoteUpload && "last:col-span-2 md:last:col-span-4",
-              )}
-            >
-              {isUploading ? "Uploading..." : "Upload All"}
-            </Button>
           </div>
         </div>
       }

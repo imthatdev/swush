@@ -65,13 +65,12 @@ async function computeGradient(dataUrl: string) {
 export async function loadAudioTrackMeta(
   slug: string,
   signal?: AbortSignal,
-  opts?: { password?: string; anonymous?: boolean },
+  opts?: { password?: string },
 ): Promise<AudioTrackMeta | null> {
   if (typeof window === "undefined") return null;
   try {
     const params = new URLSearchParams();
     if (opts?.password) params.set("p", opts.password);
-    if (opts?.anonymous) params.set("anon", "1");
     const query = params.toString();
     const url = apiV1(
       `/files/${encodeURIComponent(slug)}/audio-metadata${

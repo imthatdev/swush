@@ -7,19 +7,23 @@ type InViewOptions = IntersectionObserverInit & {
 export function useInView<T extends Element = HTMLElement>(
   options: InViewOptions = {},
 ) {
-  const { root = null, rootMargin = "300px", threshold = 0.1, once = true } =
-    options;
+  const {
+    root = null,
+    rootMargin = "300px",
+    threshold = 0.1,
+    once = true,
+  } = options;
   const ref = useRef<T | null>(null);
-  const [inView, setInView] = useState(false);
+  const [inView, setInView] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !("IntersectionObserver" in window);
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const node = ref.current;
     if (!node) return;
-    if (!("IntersectionObserver" in window)) {
-      setInView(true);
-      return;
-    }
+    if (!("IntersectionObserver" in window)) return;
 
     const observer = new IntersectionObserver(
       (entries) => {

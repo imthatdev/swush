@@ -27,7 +27,10 @@ export const runtime = "nodejs";
 
 type Params = Promise<{ id: string }>;
 
-export const GET = withApiError(async function GET(req: NextRequest, { params }: { params: Params }) {
+export const GET = withApiError(async function GET(
+  req: NextRequest,
+  { params }: { params: Params },
+) {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,7 +40,12 @@ export const GET = withApiError(async function GET(req: NextRequest, { params }:
   const [row] = await db
     .select()
     .from(apiKeySecrets)
-    .where(and(eq(apiKeySecrets.keyId, id), eq(apiKeySecrets.userId, session.user.id)))
+    .where(
+      and(
+        eq(apiKeySecrets.keyId, id),
+        eq(apiKeySecrets.userId, session.user.id),
+      ),
+    )
     .limit(1);
 
   if (!row) {
@@ -51,10 +59,10 @@ export const GET = withApiError(async function GET(req: NextRequest, { params }:
       tag: row.tag,
     });
     return NextResponse.json({ key });
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to decrypt API key" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 });

@@ -19,13 +19,13 @@ import type { Metadata, Viewport } from "next";
 import { getDefaultMetadata } from "@/lib/head";
 import { notFound } from "next/navigation";
 import { headers, cookies } from "next/headers";
+import { NextRequest } from "next/server";
 import FileUnlockAndView, {
   FileDto,
 } from "@/components/Files/FileUnlockAndView";
 import ExternalLayout from "@/components/Common/ExternalLayout";
 import { getPublicRuntimeSettings } from "@/lib/server/runtime-settings";
 import { formatBytes, isSpoilerLabel } from "@/lib/helpers";
-import { apiV1Absolute } from "@/lib/api-path";
 import {
   applyEmbedTemplates,
   applyEmbedSettings,
@@ -33,41 +33,64 @@ import {
   resolveEmbedThemeColor,
   resolveEmbedViewport,
 } from "@/lib/server/embed-settings";
+import { getFile as readFileBySlug } from "@/lib/api/files/read";
 
 export const dynamic = "force-dynamic";
 
 type Params = Promise<{ slug: string }>;
-type SearchParams = Promise<{ anon?: string }>;
+
+type FileDtoLike = Omit<FileDto, "createdAt"> & {
+  createdAt: string | Date | null;
+};
+
+async function buildFileReadRequest(slug: string) {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  const cookieHeader = (await cookies()).toString();
+
+  const base = `${proto}://${host ?? "localhost"}`;
+  const url = new URL(`/api/v1/files/${encodeURIComponent(slug)}`, base);
+  url.searchParams.set("include", "owner");
+
+  const requestHeaders = new Headers();
+  if (cookieHeader) requestHeaders.set("cookie", cookieHeader);
+
+  return new NextRequest(url, {
+    headers: requestHeaders,
+  });
+}
+
+function normalizeFileDto(file: FileDtoLike): FileDto {
+  return {
+    ...file,
+    createdAt:
+      file.createdAt instanceof Date
+        ? file.createdAt.toISOString()
+        : (file.createdAt ?? ""),
+  };
+}
+
+async function readFileDto(slug: string) {
+  const req = await buildFileReadRequest(slug);
+  const result = await readFileBySlug(req, slug);
+  if (result.status !== 200) return null;
+  return normalizeFileDto(result.body as FileDtoLike);
+}
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
   params: Params;
-  searchParams: SearchParams;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const { anon } = await searchParams;
-  const isAnonymous = ["1", "true", "yes"].includes((anon ?? "").toLowerCase());
   const { appName, appUrl } = await getPublicRuntimeSettings();
   const defaultMetadata = await getDefaultMetadata();
 
   let file: FileDto | null = null;
   try {
-    const query = new URLSearchParams();
-    if (!isAnonymous) query.set("include", "owner");
-    if (isAnonymous) query.set("anon", "1");
-    const res = await fetch(
-      apiV1Absolute(appUrl, `/files/${slug}?${query.toString()}`),
-      {
-        cache: "no-store",
-        headers: {
-          "x-no-audit": "1",
-          "x-audit-source": "metadata",
-        },
-      },
-    );
-    if (res.ok) file = (await res.json()) as FileDto;
+    file = await readFileDto(slug);
   } catch {}
 
   const sizeText = ` I just wasted ${formatBytes(
@@ -89,7 +112,7 @@ export async function generateMetadata({
     ogImage = `${appUrl}/x/${slug}.png`;
   }
 
-  const anonymousActive = isAnonymous || Boolean(file?.anonymousShareEnabled);
+  const anonymousActive = Boolean(file?.anonymousShareEnabled);
   const ownerUsername = anonymousActive ? undefined : file?.ownerUsername;
   const ownerDisplay = anonymousActive
     ? undefined
@@ -175,36 +198,18 @@ export async function generateMetadata({
 
 export async function generateViewport({
   params,
-  searchParams,
 }: {
   params: Params;
-  searchParams: SearchParams;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<Viewport> {
   const { slug } = await params;
-  const { anon } = await searchParams;
-
-  const isAnonymous = ["1", "true", "yes"].includes((anon ?? "").toLowerCase());
-  const { appUrl } = await getPublicRuntimeSettings();
 
   let file: FileDto | null = null;
   try {
-    const query = new URLSearchParams();
-    if (!isAnonymous) query.set("include", "owner");
-    if (isAnonymous) query.set("anon", "1");
-    const res = await fetch(
-      apiV1Absolute(appUrl, `/files/${slug}?${query.toString()}`),
-      {
-        cache: "no-store",
-        headers: {
-          "x-no-audit": "1",
-          "x-audit-source": "metadata",
-        },
-      },
-    );
-    if (res.ok) file = (await res.json()) as FileDto;
+    file = await readFileDto(slug);
   } catch {}
 
-  const anonymousActive = isAnonymous || Boolean(file?.anonymousShareEnabled);
+  const anonymousActive = Boolean(file?.anonymousShareEnabled);
   return resolveEmbedViewport(anonymousActive ? undefined : file?.userId);
 }
 
@@ -214,37 +219,24 @@ type FileFetch = {
   error?: string | null;
 };
 
-async function getFile(slug: string, anonymous: boolean): Promise<FileFetch> {
+async function getFile(slug: string): Promise<FileFetch> {
   try {
-    const h = await headers();
-    const host = h.get("x-forwarded-host") ?? h.get("host");
-    const proto = h.get("x-forwarded-proto") ?? "http";
-    if (!host) return { data: null, status: 500 };
-
-    const base = `${proto}://${host}`;
-    const cookieHeader = (await cookies()).toString();
-    const query = new URLSearchParams();
-    if (!anonymous) query.set("include", "owner");
-    if (anonymous) query.set("anon", "1");
-    const res = await fetch(
-      apiV1Absolute(base, `/files/${slug}?${query.toString()}`),
-      {
-        cache: "no-store",
-        headers: { cookie: cookieHeader },
-      },
-    );
-
-    if (!res.ok) {
-      let error: string | null = null;
-      try {
-        const body = (await res.json()) as { message?: string } | null;
-        error = body?.message ?? null;
-      } catch {}
-      return { data: null, status: res.status, error };
+    const req = await buildFileReadRequest(slug);
+    const result = await readFileBySlug(req, slug);
+    if (result.status !== 200) {
+      const body = result.body as { message?: string } | undefined;
+      return {
+        data: null,
+        status: result.status,
+        error: body?.message ?? null,
+      };
     }
 
-    const data = (await res.json()) as FileDto;
-    return { data, status: 200, error: null };
+    return {
+      data: normalizeFileDto(result.body as FileDtoLike),
+      status: 200,
+      error: null,
+    };
   } catch {
     return { data: null, status: 500, error: null };
   }
@@ -252,21 +244,12 @@ async function getFile(slug: string, anonymous: boolean): Promise<FileFetch> {
 
 export default async function ViewFilePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ anon?: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const resolvedParams = await params;
-  const resolvedSearchParams = await searchParams;
-  const isAnonymous = ["1", "true", "yes"].includes(
-    (resolvedSearchParams?.anon ?? "").toLowerCase(),
-  );
-  const {
-    data: file,
-    status,
-    error,
-  } = await getFile(resolvedParams.slug, isAnonymous);
+  const { data: file, status, error } = await getFile(resolvedParams.slug);
 
   if (status === 404) {
     return notFound();
@@ -286,7 +269,7 @@ export default async function ViewFilePage({
 
   if (!file) notFound();
 
-  const anonymousActive = isAnonymous || Boolean(file?.anonymousShareEnabled);
+  const anonymousActive = Boolean(file?.anonymousShareEnabled);
   const embedAccent = resolveEmbedThemeColor(
     anonymousActive ? null : await getEmbedSettingsByUserId(file?.userId),
   );

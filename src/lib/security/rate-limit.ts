@@ -18,7 +18,7 @@
 import "server-only";
 import { db } from "@/db/client";
 import { rateLimits } from "@/db/schemas/core-schema";
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 export type RateLimitArgs = {
   key: string;

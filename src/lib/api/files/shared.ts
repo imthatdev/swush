@@ -23,8 +23,8 @@ import { eq } from "drizzle-orm";
 
 export async function findFileByKey(key: string) {
   const isUuid =
-    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
-      key
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+      key,
     );
   const where = isUuid ? eq(filesTbl.id, key) : eq(filesTbl.slug, key);
   return db.select().from(filesTbl).where(where).limit(1);

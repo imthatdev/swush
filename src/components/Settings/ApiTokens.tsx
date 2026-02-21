@@ -341,7 +341,6 @@ export function ApiTokens() {
                 <Label>Scopes</Label>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {API_KEY_SCOPES.map((scope) => {
-                    const isAll = tokenScopes.has("all");
                     const isChecked = tokenScopes.has(scope.id);
 
                     return (

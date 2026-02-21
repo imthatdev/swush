@@ -17,7 +17,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import PageLayout from "@/components/Common/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -224,7 +224,7 @@ export default function UploadLinksClient() {
     }
   };
 
-  const openQueue = async (link: UploadLink) => {
+  const openQueue = useCallback(async (link: UploadLink) => {
     setQueueTarget(link);
     setQueueOpen(true);
     setQueueLoading(true);
@@ -242,19 +242,22 @@ export default function UploadLinksClient() {
     } finally {
       setQueueLoading(false);
     }
-  };
+  }, []);
 
-  const openQueueById = async (id: string) => {
-    const link = items.find((item) => item.id === id);
-    await openQueue(
-      link ?? {
-        id,
-        title: "Upload link",
-        slug: "",
-        isActive: true,
-      },
-    );
-  };
+  const openQueueById = useCallback(
+    async (id: string) => {
+      const link = items.find((item) => item.id === id);
+      await openQueue(
+        link ?? {
+          id,
+          title: "Upload link",
+          slug: "",
+          isActive: true,
+        },
+      );
+    },
+    [items, openQueue],
+  );
 
   useEffect(() => {
     if (queueHandled) return;
@@ -262,7 +265,7 @@ export default function UploadLinksClient() {
     if (!id) return;
     setQueueHandled(true);
     void openQueueById(id);
-  }, [queueHandled, searchParams, items]);
+  }, [openQueueById, queueHandled, searchParams, items]);
 
   const handleQueueAction = async (
     itemId: string,

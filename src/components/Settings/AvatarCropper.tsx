@@ -19,6 +19,7 @@
 
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -45,12 +46,10 @@ export const AvatarCropper = forwardRef<
     previewSize?: number;
     outputSize?: number;
   }
->(function AvatarCropper({
-  file,
-  disabled = false,
-  previewSize = 240,
-  outputSize = 256,
-}, ref) {
+>(function AvatarCropper(
+  { file, disabled = false, previewSize = 240, outputSize = 256 },
+  ref,
+) {
   const [zoom, setZoom] = useState(1.2);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null);
@@ -83,7 +82,10 @@ export const AvatarCropper = forwardRef<
 
   const scales = useMemo(() => {
     if (!imgSize) return null;
-    const basePreview = Math.max(previewSize / imgSize.w, previewSize / imgSize.h);
+    const basePreview = Math.max(
+      previewSize / imgSize.w,
+      previewSize / imgSize.h,
+    );
     return { basePreview };
   }, [imgSize, previewSize]);
 
@@ -105,7 +107,7 @@ export const AvatarCropper = forwardRef<
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoom, imgSize, scales, previewSize]);
 
-  function getSourceRect() {
+  const getSourceRect = useCallback(() => {
     const img = imgElRef.current;
     const size = imgSize;
     const sc = scales;
@@ -129,7 +131,7 @@ export const AvatarCropper = forwardRef<
       sw: srcW,
       sh: srcH,
     };
-  }
+  }, [imgSize, offset.x, offset.y, previewSize, scales, zoom]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -160,7 +162,7 @@ export const AvatarCropper = forwardRef<
       previewSize,
       previewSize,
     );
-  }, [imgSize, offset.x, offset.y, previewSize, scales, zoom]);
+  }, [getSourceRect, imgSize, offset.x, offset.y, previewSize, scales, zoom]);
 
   useImperativeHandle(ref, () => ({
     isReady() {
@@ -232,7 +234,12 @@ export const AvatarCropper = forwardRef<
             if (!drag) return;
             const dx = e.clientX - drag.startX;
             const dy = e.clientY - drag.startY;
-            setOffset(clampOffset({ x: drag.startOffsetX + dx, y: drag.startOffsetY + dy }));
+            setOffset(
+              clampOffset({
+                x: drag.startOffsetX + dx,
+                y: drag.startOffsetY + dy,
+              }),
+            );
           }}
           onPointerUp={() => {
             dragRef.current = null;
@@ -241,6 +248,7 @@ export const AvatarCropper = forwardRef<
             dragRef.current = null;
           }}
         >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={imgElRef}
             src={objectUrl}

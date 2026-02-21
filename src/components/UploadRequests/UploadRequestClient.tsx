@@ -18,6 +18,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import PageLayout from "@/components/Common/PageLayout";
 import UploadDropzone from "@/components/Upload/UploadDropzone";
 import UploadQueue from "@/components/Upload/UploadQueue";
@@ -267,10 +268,13 @@ export default function UploadRequestClient({
         >
           <div className="flex items-center gap-3">
             {data.brandLogoUrl ? (
-              <img
+              <Image
                 src={data.brandLogoUrl}
                 alt="Brand logo"
+                width={40}
+                height={40}
                 className="h-10 w-10 rounded-md object-contain bg-background"
+                unoptimized
               />
             ) : null}
             <div className="text-sm text-muted-foreground">

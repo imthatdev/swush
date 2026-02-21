@@ -31,10 +31,7 @@ import { eq } from "drizzle-orm";
 import { getCurrentUser, getCurrentUserFromToken } from "@/lib/client/user";
 import { findFileByKey } from "./shared";
 import { verifyPasswordHash } from "@/lib/api/password";
-import {
-  enforceAnonymousFileLimits,
-  isAnonymousRequest,
-} from "@/lib/server/anonymous-share";
+import { enforceAnonymousFileLimits } from "@/lib/server/anonymous-share";
 import { isMedia } from "@/lib/mime-types";
 
 export async function getFile(req: NextRequest, key: string) {
@@ -43,8 +40,7 @@ export async function getFile(req: NextRequest, key: string) {
     return { status: 404 as const, body: { message: "Not found" } };
   const f = rows[0];
 
-  const isAnonymous =
-    isAnonymousRequest(req) || f.anonymousShareEnabled === true;
+  const isAnonymous = f.anonymousShareEnabled === true;
 
   const includeOwner =
     !isAnonymous &&

@@ -69,7 +69,7 @@ function filterStartsWith(options: string[], q: string, limit = 6) {
   if (!qq) return options.slice(0, limit);
   const starts = options.filter((o) => o.toLowerCase().startsWith(qq));
   const rest = options.filter(
-    (o) => !o.toLowerCase().startsWith(qq) && o.toLowerCase().includes(qq)
+    (o) => !o.toLowerCase().startsWith(qq) && o.toLowerCase().includes(qq),
   );
   return [...starts, ...rest].slice(0, limit);
 }
@@ -111,20 +111,22 @@ export function BulkTagsFoldersDialog({
     })();
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    setFolderName("");
-    setChips([]);
-    setDraft("");
-  }, [open]);
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) {
+      setFolderName("");
+      setChips([]);
+      setDraft("");
+    }
+    onOpenChange(nextOpen);
+  }
 
   const tagMap = useMemo(
     () => new Map(tags.map((t) => [normalize(t.name), t.id])),
-    [tags]
+    [tags],
   );
   const tagColorMap = useMemo(
     () => new Map(tags.map((t) => [normalize(t.name), t.color ?? null])),
-    [tags]
+    [tags],
   );
 
   function commitDraft() {
@@ -212,7 +214,7 @@ export function BulkTagsFoldersDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         onOpenAutoFocus={(e) => {
           e.preventDefault();
@@ -252,8 +254,8 @@ export function BulkTagsFoldersDialog({
                       folders.map((f) => [
                         normalizeFolder(f.name),
                         capitalizeFirst(f.name),
-                      ])
-                    ).values()
+                      ]),
+                    ).values(),
                   );
                   return filterStartsWith(uniqDisplay, folderName)
                     .filter((n) => n && n !== folderName.trim())
@@ -291,10 +293,10 @@ export function BulkTagsFoldersDialog({
             role="textbox"
             aria-labelledby="tags-label"
           >
-            {chips.map((t) => (
+            {chips.map((t) =>
               (() => {
                 const colorStyles = getBadgeColorStyles(
-                  tagColorMap.get(normalize(t))
+                  tagColorMap.get(normalize(t)),
                 );
                 return (
                   <Badge
@@ -317,8 +319,8 @@ export function BulkTagsFoldersDialog({
                     </button>
                   </Badge>
                 );
-              })()
-            ))}
+              })(),
+            )}
             <input
               ref={inputRef}
               id="tags-input"
@@ -354,7 +356,7 @@ export function BulkTagsFoldersDialog({
                         nn !== normalize(draft)
                       );
                     }),
-                  draft
+                  draft,
                 ).map((name) => (
                   <button
                     key={name}

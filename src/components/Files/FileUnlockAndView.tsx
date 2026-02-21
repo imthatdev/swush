@@ -46,7 +46,6 @@ import { FileCodeViewer } from "./FileCodeViewer";
 import { StreamVideo } from "@/components/Files/StreamVideo";
 import { loadAudioTrackMeta } from "@/lib/audio-metadata";
 import type { AudioTrackMeta } from "@/types/player";
-import { useSearchParams } from "next/navigation";
 
 function hexToRgba(hex: string, alpha: number) {
   const cleaned = hex.replace("#", "").trim();
@@ -104,10 +103,6 @@ export default function FileUnlockAndView({
   initialError,
   accentColor,
 }: Props) {
-  const searchParams = useSearchParams();
-  const isAnonymous = ["1", "true", "yes"].includes(
-    (searchParams.get("anon") || "").toLowerCase(),
-  );
   const [fileText, setFileText] = useState<string | null>(null);
   const [fileTextLoading, setFileTextLoading] = useState(false);
   const codeRef = useRef<HTMLElement | null>(null);
@@ -120,7 +115,7 @@ export default function FileUnlockAndView({
     initialFile?.audioMeta ?? null,
   );
   const { prefs } = useUserPreferences();
-  const anonFlag = isAnonymous || file?.anonymousShareEnabled === true;
+  const anonFlag = file?.anonymousShareEnabled === true;
   const isPrivate =
     initialStatus === 403 &&
     typeof initialError === "string" &&
@@ -130,7 +125,6 @@ export default function FileUnlockAndView({
   const buildUrl = (base: string) => {
     const params = new URLSearchParams();
     if (password) params.set("p", password);
-    if (anonFlag) params.set("anon", "1");
     const suffix = params.toString();
     return suffix ? `${base}?${suffix}` : base;
   };
@@ -145,6 +139,7 @@ export default function FileUnlockAndView({
   );
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const imageRef = useRef<HTMLImageElement | null>(null);
   const cardStyle = useMemo(() => {
     if (!accentColor) return undefined;
     const start = hexToRgba(accentColor, 0.18) ?? "rgba(0,0,0,0.04)";
@@ -201,6 +196,16 @@ export default function FileUnlockAndView({
 
   useEffect(() => {
     setImageLoaded(false);
+    const current = imageRef.current;
+    if (current?.complete) {
+      setImageLoaded(true);
+      return;
+    }
+    const raf = requestAnimationFrame(() => {
+      const next = imageRef.current;
+      if (next?.complete) setImageLoaded(true);
+    });
+    return () => cancelAnimationFrame(raf);
   }, [rawUrl]);
 
   async function tryUnlock(e?: FormEvent) {
@@ -211,7 +216,6 @@ export default function FileUnlockAndView({
       const params = new URLSearchParams();
       if (!anonFlag) params.set("include", "owner");
       if (password) params.set("p", password);
-      if (anonFlag) params.set("anon", "1");
       const res = await fetch(
         apiV1(`/files/${encodeURIComponent(slug)}?${params.toString()}`),
         {
@@ -300,7 +304,6 @@ export default function FileUnlockAndView({
     let active = true;
     loadAudioTrackMeta(file.slug, undefined, {
       password: password || undefined,
-      anonymous: anonFlag,
     }).then((meta) => {
       if (!active) return;
       if (meta) setAudioMeta(meta);
@@ -452,6 +455,7 @@ export default function FileUnlockAndView({
                 <div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
+                    ref={imageRef}
                     key={rawUrl}
                     src={rawUrl}
                     alt={file.originalName}

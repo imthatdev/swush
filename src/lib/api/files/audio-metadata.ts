@@ -23,10 +23,7 @@ import { audioMetadata } from "@/db/schemas";
 import { eq } from "drizzle-orm";
 import { getCurrentUser, getCurrentUserFromToken } from "@/lib/client/user";
 import { verifyPasswordHash } from "@/lib/api/password";
-import {
-  enforceAnonymousFileLimits,
-  isAnonymousRequest,
-} from "@/lib/server/anonymous-share";
+import { enforceAnonymousFileLimits } from "@/lib/server/anonymous-share";
 import {
   computeAudioGradient,
   extractAudioMetadata,
@@ -71,8 +68,7 @@ export async function getAudioMetadata(req: NextRequest, key: string) {
     }
   }
 
-  const isAnonymous =
-    isAnonymousRequest(req) || f.anonymousShareEnabled === true;
+  const isAnonymous = f.anonymousShareEnabled === true;
   if (isAnonymous) {
     const limitError = enforceAnonymousFileLimits({
       size: f.size,

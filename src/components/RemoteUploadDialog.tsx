@@ -127,7 +127,7 @@ export default function RemoteUploadDialog({
             }}
             placeholder="Paste one or more URLs (one per line or comma separated)"
             disabled={submitting}
-            className="max-h-36"
+            className="max-h-36 break-all"
             rows={3}
           />
           <div className="overflow-y-auto max-h-28">

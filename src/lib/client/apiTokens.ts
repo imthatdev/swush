@@ -30,7 +30,6 @@ import {
   DEFAULT_API_KEY_SCOPES,
   type ApiKeyScope,
   sanitizeApiKeyScopes,
-  serializeApiKeyScopes,
 } from "@/lib/api-key-scopes";
 
 export const listedApiKeys = async () => {

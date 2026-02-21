@@ -11,6 +11,32 @@ This project follows [Semantic Versioning](https://iconical.dev/versioning).
 
 ---
 
+## v1.0.4 – Public View Route Fixes 🧩
+
+**Released: February 22, 2026**
+
+This patch fixes a regression where public files failed to open from the `/v/:slug` view route in some Docker/reverse-proxy setups.
+
+### 🔎 Root Cause
+
+- In `v1.0.3`, the `/v/:slug` page resolved file data via an internal server-side HTTP self-call to `/api/v1/files/:slug`.
+- In Docker/port-mapped deployments (for example, opening the app at `localhost:3419`), that host/port can be valid for the browser but not reachable from inside the container runtime.
+- When that self-call failed, `/v/:slug` incorrectly fell back to a missing/private state even for public files.
+- `/x/:slug` still worked because it does not rely on that same internal HTTP roundtrip path.
+
+### 🐛 Fixes
+
+- Fixed public file viewing through `/v/:slug` by removing the fragile internal HTTP self-call and resolving file access in-process.
+- Kept `/x/:slug` and `/v/:slug` behavior consistent for public file access checks.
+- Normalized file payload typing for `createdAt` in the `/v` page flow to prevent runtime-shape/TypeScript mismatch.
+- Fixed current blocking lint errors in dialog open-state reset flow and intersection observer fallback handling.
+- Hardened anonymous file behavior so `/v` anonymity is enforced by stored file settings/server logic instead of `?anon=1` URL parameters.
+- Added an `Anonymous share` toggle to file edit details and removed the legacy `Copy Anonymous URL` action.
+- Fixed an intermittent `/v/:slug` image preview state where media could remain blurred after load due to missed cached-load events.
+- Fixed the RemoteUploadDialog URLs input keeps overflowing when the URL is long.
+
+---
+
 ## v1.0.3 – CORS and Security Enhancements 🔐
 
 **Released: February 8, 2026**

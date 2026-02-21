@@ -28,6 +28,7 @@ export interface Upload {
   size: number;
   slug: string;
   isPublic: boolean;
+  anonymousShareEnabled?: boolean | null;
   hasPassword?: boolean;
   views?: number;
   maxViews?: number | null;
