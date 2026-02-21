@@ -34,6 +34,7 @@ This patch fixes a regression where public files failed to open from the `/v/:sl
 - Added an `Anonymous share` toggle to file edit details and removed the legacy `Copy Anonymous URL` action.
 - Fixed an intermittent `/v/:slug` image preview state where media could remain blurred after load due to missed cached-load events.
 - Fixed the RemoteUploadDialog URLs input keeps overflowing when the URL is long.
+- Resolved dependency security advisories (`minimatch`, `bn.js`, `esbuild`) by pinning patched transitive versions via `pnpm` overrides and refreshing the lockfile.
 
 ---
 
