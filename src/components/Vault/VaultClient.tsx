@@ -751,9 +751,18 @@ export default function VaultClient({
   ) => {
     const isShift = Boolean(e?.shiftKey);
     const isCtrl = Boolean(e?.metaKey || e?.ctrlKey);
-    if (isShift && lastSelectedIndexRef.current !== null) {
-      const start = Math.min(lastSelectedIndexRef.current, index);
-      const end = Math.max(lastSelectedIndexRef.current, index);
+    const firstSelectedId = selectedIds[0];
+    const firstSelectedIndex = firstSelectedId
+      ? visibleItems.findIndex((f) => f.id === firstSelectedId)
+      : -1;
+    const anchorIndex =
+      firstSelectedIndex >= 0
+        ? firstSelectedIndex
+        : lastSelectedIndexRef.current;
+
+    if (isShift && anchorIndex !== null) {
+      const start = Math.min(anchorIndex, index);
+      const end = Math.max(anchorIndex, index);
       const rangeIds = visibleItems.slice(start, end + 1).map((f) => f.id);
       selectRange(rangeIds, { additive: isCtrl });
       lastSelectedIndexRef.current = index;
@@ -982,6 +991,7 @@ export default function VaultClient({
 
   return (
     <PageLayout
+      className="h-auto! overflow-visible!"
       title={`Welcome back, ${user?.name ? user.name : user.username} 👋`}
       subtitle="Here’s your stash."
       headerActions={
@@ -1283,7 +1293,10 @@ export default function VaultClient({
         </div>
       )}
 
-      <SelectionBar count={selectedCount}>
+      <SelectionBar
+        count={selectedCount}
+        className="sticky top-2 z-40 bg-muted/95 shadow-sm backdrop-blur supports-backdrop-filter:bg-muted/80"
+      >
         <Button
           variant="outline"
           onClick={() => toggleAllOnPage()}
@@ -1454,6 +1467,7 @@ export default function VaultClient({
                         hlsSrc={`/hls/${encodeURIComponent(file.slug)}/index.m3u8`}
                         mime={file.mimeType}
                         name={file.originalName}
+                        disableInteraction={selectedCount > 0}
                       />
                     </div>
                   ) : isMedia("audio", file.mimeType, file.originalName) ? (

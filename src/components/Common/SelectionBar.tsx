@@ -33,17 +33,16 @@ export default function SelectionBar({
 }) {
   if (count <= 0) return null;
 
-  const summaryContent =
-    summary ?? (
-      <>
-        <strong>{count}</strong> selected on this page
-      </>
-    );
+  const summaryContent = summary ?? (
+    <>
+      <strong>{count}</strong> selected on this page
+    </>
+  );
 
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center justify-between rounded-md bg-muted px-3 py-2 text-sm",
+        "flex flex-wrap items-center justify-between rounded-md border bg-muted px-3 py-2 text-sm",
         className,
       )}
     >

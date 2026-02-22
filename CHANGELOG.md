@@ -11,6 +11,21 @@ This project follows [Semantic Versioning](https://iconical.dev/versioning).
 
 ---
 
+## v1.0.6 – Vault UX & Selection Improvements 🎯
+
+**Released: February 22, 2026**
+
+### 🛠️ Vault & Categorization Improvements
+
+- Fixed file categorization folder clearing so removing folder text and saving now correctly unassigns the folder.
+- Improved selected file card visibility and selection affordance during bulk-select mode.
+- Updated Shift multi-select behavior to anchor range selection from the first selected item.
+- Improved bulk selection action bar behavior in Vault so it sticks correctly within dashboard scroll/layout context.
+- Prevented video preview playback while selection mode is active (grid + gallery), including pausing active previews.
+- Fixed React effect/lint warning by removing synchronous state updates from the preview interaction-disable effect.
+
+---
+
 ## v1.0.4 – Public View Route Fixes 🧩
 
 **Released: February 22, 2026**

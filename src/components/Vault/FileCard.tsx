@@ -155,9 +155,11 @@ export default function FileCard({
 
   return (
     <Card
-      className={`group relative transition-all gap-3 animate-fade-in-up h-full ${
-        selected ? "ring-2 ring-primary" : ""
-      }`}
+      className={cn(
+        "group relative transition-all gap-3 animate-fade-in-up h-full",
+        selected &&
+          "ring-2 ring-primary border-primary/70 bg-accent/30 shadow-sm",
+      )}
       style={{ animationDelay: `${index * 100}ms` }}
       onClick={
         enableCardSelection
@@ -294,6 +296,7 @@ export default function FileCard({
               spoiler={spoiler}
               revealSpoilers={revealSpoilers}
               audioMeta={file.audioMeta ?? null}
+              disablePreviewInteraction={enableCardSelection}
             />
             {(isMedia("image", file.mimeType, file.originalName) ||
               isMedia("video", file.mimeType, file.originalName)) && (
@@ -353,7 +356,12 @@ export default function FileCard({
             </div>
           );
         })()}
-        <div className="absolute left-2 top-2 z-10 md:opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div
+          className={cn(
+            "absolute left-2 top-2 z-10 transition-opacity duration-300",
+            selected ? "opacity-100" : "md:opacity-0 group-hover:opacity-100",
+          )}
+        >
           <Checkbox
             checked={selected}
             onClick={(e) => {

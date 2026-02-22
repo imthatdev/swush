@@ -226,12 +226,14 @@ export function VideoPreview({
   previewSrc,
   name,
   mime,
+  disableInteraction = false,
 }: {
   src: string;
   hlsSrc?: string;
   previewSrc?: string;
   name: string;
   mime: string;
+  disableInteraction?: boolean;
 }) {
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
@@ -255,11 +257,18 @@ export function VideoPreview({
     return () => mq.removeEventListener("change", update);
   }, []);
 
+  useEffect(() => {
+    if (!disableInteraction) return;
+    videoRef.current?.pause();
+  }, [disableInteraction]);
+
   if (errored) return <FileIcon mime={mime} />;
 
-  const showVideo = supportsHover
-    ? onHover || isPlaying
-    : touchActive || isPlaying;
+  const showVideo = disableInteraction
+    ? false
+    : supportsHover
+      ? onHover || isPlaying
+      : touchActive || isPlaying;
 
   return (
     <div
@@ -268,9 +277,11 @@ export function VideoPreview({
         PREVIEW_BG,
       )}
       onMouseEnter={() => {
+        if (disableInteraction) return;
         if (supportsHover) setOnHover(true);
       }}
       onMouseLeave={() => {
+        if (disableInteraction) return;
         if (supportsHover) setOnHover(false);
       }}
     >
@@ -288,6 +299,7 @@ export function VideoPreview({
         aria-label={supportsHover ? undefined : "Play video preview"}
         tabIndex={supportsHover ? -1 : 0}
         onClick={() => {
+          if (disableInteraction) return;
           if (supportsHover) return;
           setTouchActive(true);
           const video = videoRef.current;
@@ -296,6 +308,7 @@ export function VideoPreview({
           }
         }}
         onKeyDown={(e) => {
+          if (disableInteraction) return;
           if (supportsHover) return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -326,7 +339,7 @@ export function VideoPreview({
           hlsSrc={hlsSrc}
           lazy={!showVideo}
           muted
-          controls
+          controls={!disableInteraction}
           playsInline
           preload="metadata"
           ref={videoRef}
@@ -413,6 +426,7 @@ export default function FilePreview({
   spoiler,
   revealSpoilers,
   audioMeta: audioMetaProp,
+  disablePreviewInteraction = false,
 }: {
   mime: string;
   src: string;
@@ -426,6 +440,7 @@ export default function FilePreview({
   spoiler?: boolean;
   revealSpoilers?: boolean;
   audioMeta?: AudioTrackMeta | null;
+  disablePreviewInteraction?: boolean;
 }) {
   const [audioMeta, setAudioMeta] = useState<AudioTrackMeta | null>(
     audioMetaProp ?? null,
@@ -520,6 +535,7 @@ export default function FilePreview({
         previewSrc={previewSrc}
         name={name}
         mime={mime}
+        disableInteraction={disablePreviewInteraction}
       />
     );
   } else if (mime === "application/pdf") {

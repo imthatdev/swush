@@ -66,7 +66,7 @@ function filterStartsWith(options: string[], q: string, limit = 6) {
   if (!qq) return options.slice(0, limit);
   const starts = options.filter((o) => o.toLowerCase().startsWith(qq));
   const rest = options.filter(
-    (o) => !o.toLowerCase().startsWith(qq) && o.toLowerCase().includes(qq)
+    (o) => !o.toLowerCase().startsWith(qq) && o.toLowerCase().includes(qq),
   );
   return [...starts, ...rest].slice(0, limit);
 }
@@ -105,13 +105,11 @@ function FileTagsFoldersDialogBody({
   const [tags, setTags] = useState<TagMeta[]>([]);
 
   const [folderName, setFolderName] = useState(() =>
-    capitalizeFirst(resolveFileFolderName(file))
+    capitalizeFirst(resolveFileFolderName(file)),
   );
   const [folderFocused, setFolderFocused] = useState(false);
 
-  const [chips, setChips] = useState<string[]>(() =>
-    resolveFileTags(file)
-  );
+  const [chips, setChips] = useState<string[]>(() => resolveFileTags(file));
   const [draft, setDraft] = useState("");
   const [tagsFocused, setTagsFocused] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -136,11 +134,11 @@ function FileTagsFoldersDialogBody({
 
   const tagMap = useMemo(
     () => new Map(tags.map((t) => [normalize(t.name), t.id])),
-    [tags]
+    [tags],
   );
   const tagColorMap = useMemo(
     () => new Map(tags.map((t) => [normalize(t.name), t.color ?? null])),
-    [tags]
+    [tags],
   );
 
   function commitDraft() {
@@ -160,6 +158,7 @@ function FileTagsFoldersDialogBody({
     let folderId: string | null = null;
     const fnameDisplay = capitalizeFirst(folderName);
     const fnameNorm = normalizeFolder(folderName);
+    const initialFolderNorm = normalizeFolder(resolveFileFolderName(file));
     if (fnameNorm) {
       const match = folders.find((f) => normalizeFolder(f.name) === fnameNorm);
       if (match) {
@@ -178,12 +177,18 @@ function FileTagsFoldersDialogBody({
       }
     }
 
+    if (fnameNorm && !folderId) {
+      toast.error("Failed to set folder");
+      setSaving(false);
+      return;
+    }
+
     const desired = new Set(chips.map(normalize));
     const current = new Set(
       ((file as unknown as { tags?: (string | { name: string })[] }).tags ?? [])
-        .map((t) => (typeof t === "string" ? t : t?.name ?? ""))
+        .map((t) => (typeof t === "string" ? t : (t?.name ?? "")))
         .map(normalize)
-        .filter(Boolean)
+        .filter(Boolean),
     );
 
     const toAddNames = [...desired].filter((n) => !current.has(n));
@@ -228,7 +233,7 @@ function FileTagsFoldersDialogBody({
       removeTagIds?: string[];
     } = {};
 
-    if (typeof folderId === "string" || (!fnameNorm && folderName)) {
+    if (fnameNorm !== initialFolderNorm) {
       body.folderId = folderId ?? null;
     }
     if (addIds.length) body.addTagIds = addIds;
@@ -255,11 +260,10 @@ function FileTagsFoldersDialogBody({
 
     const nextTags = [...tags, ...createdTags];
     const tagColorByName = new Map(
-      nextTags.map((t) => [normalize(t.name), t.color ?? null])
+      nextTags.map((t) => [normalize(t.name), t.color ?? null]),
     );
     const folderColor =
-      folderId &&
-      folders.find((f) => f.id === folderId)?.color;
+      folderId && folders.find((f) => f.id === folderId)?.color;
 
     const updated: Upload &
       Partial<{
@@ -285,194 +289,191 @@ function FileTagsFoldersDialogBody({
   }
 
   return (
-      <DialogContent
-        onOpenAutoFocus={(e) => {
-          e.preventDefault();
-          inputRef.current?.focus();
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle>Edit Tags & Folder</DialogTitle>
-          <DialogDescription>
-            Organize your file with a folder and tags. Tags are case‑insensitive
-            and deduped.
-          </DialogDescription>
-        </DialogHeader>
+    <DialogContent
+      onOpenAutoFocus={(e) => {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }}
+    >
+      <DialogHeader>
+        <DialogTitle>Edit Tags & Folder</DialogTitle>
+        <DialogDescription>
+          Organize your file with a folder and tags. Tags are case‑insensitive
+          and deduped.
+        </DialogDescription>
+      </DialogHeader>
 
-        <div className="grid gap-1.5">
-          <label htmlFor="folder" className="text-xs text-muted-foreground">
-            Folder
-          </label>
-          <div className="relative">
-            <Input
-              id="folder"
-              value={folderName}
-              onChange={(e) => setFolderName(capitalizeFirst(e.target.value))}
-              onFocus={() => setFolderFocused(true)}
-              onBlur={() => {
-                setFolderName((prev) => capitalizeFirst(prev));
-                setFolderFocused(false);
-              }}
-              placeholder="e.g. Invoices / 2025"
-              disabled={saving}
-            />
-            {folderFocused && folderName.trim() && folders.length > 0 && (
-              <div className="absolute z-20 mt-1 w-full rounded-md border bg-popover shadow-sm">
-                {(() => {
-                  const uniqDisplay = Array.from(
-                    new Map(
-                      folders.map((f) => [
-                        normalizeFolder(f.name),
-                        capitalizeFirst(f.name),
-                      ])
-                    ).values()
-                  );
-                  return filterStartsWith(uniqDisplay, folderName)
-                    .filter((n) => n && n !== folderName.trim())
-                    .map((name) => (
-                      <button
-                        key={name}
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          setFolderName(name);
-                          setFolderFocused(false);
-                        }}
-                        className="w-full text-left px-3 py-1.5 hover:bg-muted rounded-md transition"
-                      >
-                        {name}
-                      </button>
-                    ));
-                })()}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="grid gap-1.5">
-          <label
-            htmlFor="tags-input"
-            id="tags-label"
-            className="text-xs text-muted-foreground"
-          >
-            Tags
-          </label>
-          <div
-            className="flex min-h-10 w-full flex-wrap items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
-            onClick={() => inputRef.current?.focus()}
-            role="textbox"
-            aria-labelledby="tags-label"
-          >
-            {chips.map((t) => (
-              (() => {
-                const colorStyles = getBadgeColorStyles(
-                  tagColorMap.get(normalize(t))
+      <div className="grid gap-1.5">
+        <label htmlFor="folder" className="text-xs text-muted-foreground">
+          Folder
+        </label>
+        <div className="relative">
+          <Input
+            id="folder"
+            value={folderName}
+            onChange={(e) => setFolderName(capitalizeFirst(e.target.value))}
+            onFocus={() => setFolderFocused(true)}
+            onBlur={() => {
+              setFolderName((prev) => capitalizeFirst(prev));
+              setFolderFocused(false);
+            }}
+            placeholder="e.g. Invoices / 2025"
+            disabled={saving}
+          />
+          {folderFocused && folderName.trim() && folders.length > 0 && (
+            <div className="absolute z-20 mt-1 w-full rounded-md border bg-popover shadow-sm">
+              {(() => {
+                const uniqDisplay = Array.from(
+                  new Map(
+                    folders.map((f) => [
+                      normalizeFolder(f.name),
+                      capitalizeFirst(f.name),
+                    ]),
+                  ).values(),
                 );
-                return (
-                  <Badge
-                    key={t}
-                    variant="secondary"
-                    className={cn(
-                      "rounded-full",
-                      colorStyles?.className
-                    )}
-                    style={colorStyles?.style}
-                  >
-                    {formatTag(t)}
+                return filterStartsWith(uniqDisplay, folderName)
+                  .filter((n) => n && n !== folderName.trim())
+                  .map((name) => (
                     <button
+                      key={name}
                       type="button"
-                      className="rounded-full p-0.5 hover:bg-background/50 -mr-1"
-                      onClick={() =>
-                        setChips((prev) => prev.filter((x) => x !== t))
-                      }
-                      aria-label={`Remove ${t}`}
-                      disabled={saving}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setFolderName(name);
+                        setFolderFocused(false);
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-muted rounded-md transition"
                     >
-                      <IconX className="h-3.5 w-3.5" />
+                      {name}
                     </button>
-                  </Badge>
-                );
-              })()
-            ))}
-            <input
-              ref={inputRef}
-              id="tags-input"
-              name="tags"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onFocus={() => setTagsFocused(true)}
-              onBlur={() => setTagsFocused(false)}
-              placeholder={chips.length ? "Add more…" : "e.g. work"}
-              className="min-w-[8ch] flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
-              disabled={saving}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === "," || e.key === "Tab") {
-                  e.preventDefault();
-                  commitDraft();
-                } else if (e.key === "Backspace" && !draft && chips.length) {
-                  setChips((prev) => prev.slice(0, -1));
-                }
-              }}
-            />
-          </div>
-
-          {tagsFocused && draft.trim() && tags.length > 0 && (
-            <div className="relative">
-              <div className="absolute z-20 mt-1 w-full rounded-md border bg-popover shadow-sm">
-                {filterStartsWith(
-                  tags
-                    .map((t) => t.name)
-                    .filter((n) => {
-                      const nn = normalize(n);
-                      return (
-                        !chips.map(normalize).includes(nn) &&
-                        nn !== normalize(draft)
-                      );
-                    }),
-                  draft
-                ).map((name) => (
-                  <button
-                    key={name}
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      const nv = normalize(name);
-                      setChips((prev) => {
-                        const s = new Set(prev.map(normalize));
-                        s.add(nv);
-                        return Array.from(s);
-                      });
-                      setDraft("");
-                      setTagsFocused(false);
-                    }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-muted rounded-md transition"
-                    disabled={saving}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
+                  ));
+              })()}
             </div>
           )}
-          <span className="text-[11px] text-muted-foreground">
-            Press <kbd>Enter</kbd> or comma to add. Missing tags will be created
-            automatically.
-          </span>
+        </div>
+      </div>
+
+      <div className="grid gap-1.5">
+        <label
+          htmlFor="tags-input"
+          id="tags-label"
+          className="text-xs text-muted-foreground"
+        >
+          Tags
+        </label>
+        <div
+          className="flex min-h-10 w-full flex-wrap items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
+          onClick={() => inputRef.current?.focus()}
+          role="textbox"
+          aria-labelledby="tags-label"
+        >
+          {chips.map((t) =>
+            (() => {
+              const colorStyles = getBadgeColorStyles(
+                tagColorMap.get(normalize(t)),
+              );
+              return (
+                <Badge
+                  key={t}
+                  variant="secondary"
+                  className={cn("rounded-full", colorStyles?.className)}
+                  style={colorStyles?.style}
+                >
+                  {formatTag(t)}
+                  <button
+                    type="button"
+                    className="rounded-full p-0.5 hover:bg-background/50 -mr-1"
+                    onClick={() =>
+                      setChips((prev) => prev.filter((x) => x !== t))
+                    }
+                    aria-label={`Remove ${t}`}
+                    disabled={saving}
+                  >
+                    <IconX className="h-3.5 w-3.5" />
+                  </button>
+                </Badge>
+              );
+            })(),
+          )}
+          <input
+            ref={inputRef}
+            id="tags-input"
+            name="tags"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onFocus={() => setTagsFocused(true)}
+            onBlur={() => setTagsFocused(false)}
+            placeholder={chips.length ? "Add more…" : "e.g. work"}
+            className="min-w-[8ch] flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+            disabled={saving}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === "," || e.key === "Tab") {
+                e.preventDefault();
+                commitDraft();
+              } else if (e.key === "Backspace" && !draft && chips.length) {
+                setChips((prev) => prev.slice(0, -1));
+              }
+            }}
+          />
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
-            Cancel
-          </Button>
-          <Button onClick={save} disabled={saving}>
-            {saving ? "Saving..." : "Save"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
+        {tagsFocused && draft.trim() && tags.length > 0 && (
+          <div className="relative">
+            <div className="absolute z-20 mt-1 w-full rounded-md border bg-popover shadow-sm">
+              {filterStartsWith(
+                tags
+                  .map((t) => t.name)
+                  .filter((n) => {
+                    const nn = normalize(n);
+                    return (
+                      !chips.map(normalize).includes(nn) &&
+                      nn !== normalize(draft)
+                    );
+                  }),
+                draft,
+              ).map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const nv = normalize(name);
+                    setChips((prev) => {
+                      const s = new Set(prev.map(normalize));
+                      s.add(nv);
+                      return Array.from(s);
+                    });
+                    setDraft("");
+                    setTagsFocused(false);
+                  }}
+                  className="w-full text-left px-3 py-1.5 hover:bg-muted rounded-md transition"
+                  disabled={saving}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <span className="text-[11px] text-muted-foreground">
+          Press <kbd>Enter</kbd> or comma to add. Missing tags will be created
+          automatically.
+        </span>
+      </div>
+
+      <DialogFooter className="gap-2">
+        <Button
+          variant="outline"
+          onClick={() => onOpenChange(false)}
+          disabled={saving}
+        >
+          Cancel
+        </Button>
+        <Button onClick={save} disabled={saving}>
+          {saving ? "Saving..." : "Save"}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
   );
 }
 
@@ -490,6 +491,6 @@ function resolveFileFolderName(file: Upload): string {
 function resolveFileTags(file: Upload): string[] {
   const tRaw = (
     (file as unknown as { tags?: (string | { name: string })[] }).tags ?? []
-  ).map((t) => (typeof t === "string" ? t : t?.name ?? ""));
+  ).map((t) => (typeof t === "string" ? t : (t?.name ?? "")));
   return Array.from(new Set(tRaw.map(normalize))).filter(Boolean);
 }
