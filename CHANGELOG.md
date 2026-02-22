@@ -11,6 +11,14 @@ This project follows [Semantic Versioning](https://iconical.dev/versioning).
 
 ---
 
+## v1.0.9 – Release Tagging Patch 🏷️
+
+**Released: February 22, 2026**
+
+- Updated Docker release tagging logic so `1.X.0` publishes with `stable` (for `X > 0`) while `1.0.X` continues publishing standard rolling tags.
+
+---
+
 ## v1.0.8 – Theme Motion, Docs, and About Polish 🎬
 
 **Released: February 22, 2026**

@@ -14,7 +14,21 @@ jobs:
 
       - name: Extract version from package.json
         id: version
-        run: echo "VERSION=$(jq -r '.version' package.json)" >> $GITHUB_ENV
+        run: echo "version=$(jq -r '.version' package.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Compute Docker tags
+        id: tags
+        run: |
+          BASE_IMAGE="iconical/swush"
+          VERSION="${{ steps.version.outputs.version }}"
+          TAGS="$BASE_IMAGE:$VERSION,$BASE_IMAGE:latest"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          if [[ "$MAJOR" == "1" && "$MINOR" != "0" && "$PATCH" == "0" ]]; then
+            TAGS="$TAGS,$BASE_IMAGE:stable"
+          fi
+
+          echo "docker_tags=$TAGS" >> "$GITHUB_OUTPUT"
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -33,4 +47,4 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: iconical/swush:${{ env.VERSION }},iconical/swush:latest
+          tags: ${{ steps.tags.outputs.docker_tags }}

@@ -1,14 +1,23 @@
-export function setThemeWithCurtain(
-  setTheme: (theme: string) => void,
-  nextTheme: string,
-): void;
+/*
+ *   Copyright (c) 2026 Laith Alkhaddam aka Iconical.
+ *   All rights reserved.
+
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+
+ *   http://www.apache.org/licenses/LICENSE-2.0
+
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 export function setThemeWithCurtain<T extends string>(
-  setTheme: (theme: T | ((prev: T) => T)) => void,
+  setTheme: ((theme: string) => void) | ((theme: T | ((prev: T) => T)) => void),
   nextTheme: T,
-): void;
-export function setThemeWithCurtain(
-  setTheme: (theme: unknown) => void,
-  nextTheme: string,
 ) {
   if (typeof document === "undefined" || typeof window === "undefined") {
     setTheme(nextTheme);
