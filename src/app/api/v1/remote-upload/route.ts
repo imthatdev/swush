@@ -48,11 +48,32 @@ export const POST = withApiError(async function POST(req: NextRequest) {
     const body = await req.json();
     let items: { url: string; name?: string }[] = [];
     if (Array.isArray(body.urls)) {
-      items = body.urls.map((url: string) => ({ url }));
+      items = body.urls
+        .filter((url: unknown) => typeof url === "string" && url.trim())
+        .map((url: string) => ({ url: url.trim() }));
+    } else if (typeof body.urls === "string" && body.urls.trim()) {
+      items = [{ url: body.urls.trim() }];
+    } else if (typeof body.url === "string" && body.url.trim()) {
+      items = [
+        {
+          url: body.url.trim(),
+          name: typeof body.name === "string" ? body.name : undefined,
+        },
+      ];
     } else if (Array.isArray(body.items)) {
       items = body.items.filter(
         (item: RemoteUploadJob) => typeof item.url === "string",
       );
+    } else if (body.items && typeof body.items === "object") {
+      const single = body.items as { url?: unknown; name?: unknown };
+      if (typeof single.url === "string" && single.url.trim()) {
+        items = [
+          {
+            url: single.url.trim(),
+            name: typeof single.name === "string" ? single.name : undefined,
+          },
+        ];
+      }
     }
     if (!items.length)
       return NextResponse.json(

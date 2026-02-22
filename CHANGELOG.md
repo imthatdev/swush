@@ -11,6 +11,32 @@ This project follows [Semantic Versioning](https://iconical.dev/versioning).
 
 ---
 
+## v1.0.8 – Theme Motion, Docs, and About Polish 🎬
+
+**Released: February 22, 2026**
+
+### 🎨 Theme & Appearance
+
+- Added smooth circular theme/scheme reveal transitions (View Transitions API) with reduced-motion fallback.
+- Tuned reveal speed/easing for a slower, smoother expansion and reduced text flashing during transitions.
+
+### 🔌 API & Shortcuts
+
+- Improved `/api/v1/remote-upload` payload compatibility by accepting single URL shapes (`url` and string `urls`) in addition to array payloads.
+
+### 📚 Docs
+
+- Rewrote the Apple Shortcuts guide into a concise 0→hero flow.
+- Added clear BETA + coming-soon messaging for notes, bookmarks, snippets, recipes, and game list mentions.
+
+### 🧭 About Page
+
+- Added Product Hunt badge embed with light/dark theme variants.
+- Fixed `FeatureChip` text contrast in light mode.
+- Added a coming-soon note for **Profiles & meetings** in CE About.
+
+---
+
 ## v1.0.7 – API Key Allowlist for Remote Uploads 🔐
 
 **Released: February 22, 2026**

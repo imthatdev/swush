@@ -45,6 +45,7 @@ import { useTheme } from "next-themes";
 import { useUser } from "@/hooks/use-user";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { useColorScheme } from "@/hooks/use-scheme";
+import { setThemeWithCurtain } from "@/lib/theme-transition";
 import {
   Dialog,
   DialogContent,
@@ -412,7 +413,7 @@ export function SidebarWrapper({ children }: { children: React.ReactNode }) {
                   onValueChange={(v: string) => {
                     const next = v as (typeof SCHEMES)[number];
                     setPendingScheme(next);
-                    setScheme(next);
+                    setThemeWithCurtain(setScheme, next);
                   }}
                 >
                   <SelectTrigger className="w-full">
@@ -436,7 +437,7 @@ export function SidebarWrapper({ children }: { children: React.ReactNode }) {
                   value={pendingMode}
                   onValueChange={(v) => {
                     setPendingMode(v);
-                    setTheme(v);
+                    setThemeWithCurtain(setTheme, v);
                   }}
                 >
                   <SelectTrigger className="w-full">

@@ -85,9 +85,6 @@ export default function AboutPage() {
                   <IconUpload size={16} /> Upload Requests
                 </Badge>
                 <Badge className="gap-1">
-                  <IconCalendarEvent size={16} /> Meetings
-                </Badge>
-                <Badge className="gap-1">
                   <IconSearch size={16} /> Fast Search
                 </Badge>
                 <Badge className="gap-1">
@@ -99,6 +96,25 @@ export default function AboutPage() {
                 Create, search, share (public or password‑protected), and ship
                 beautiful public pages with QR + UTM baked in.
               </p>
+              <a
+                href="https://www.producthunt.com/products/swush/launches/swush?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-swush"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block"
+              >
+                <picture>
+                  <source
+                    media="(prefers-color-scheme: dark)"
+                    srcSet="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1075424&theme=dark&t=1771759369691"
+                  />
+                  <img
+                    alt="Swush - The self-hosted power tool that just gets things done | Product Hunt"
+                    width={250}
+                    height={54}
+                    src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1075424&theme=light&t=1771759357743"
+                  />
+                </picture>
+              </a>
             </div>
 
             <TabsList className="mx-auto w-full max-w-3xl grid grid-cols-3 gap-2 mb-4">
@@ -215,6 +231,9 @@ function AboutSection() {
             <CardTitle className="flex items-center gap-2 text-lg">
               <IconCalendarEvent size={18} /> Profiles & meetings
             </CardTitle>
+            <Badge variant="default">
+              Note: Profiles & meetings are still coming soon... stay tuned.
+            </Badge>
             <CardDescription>
               Public profiles, socials, and booking links.
             </CardDescription>
@@ -372,10 +391,8 @@ function HowToSection() {
             </ol>
           </CardContent>
         </Card>
-      </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
-        <Card className="border-primary/20">
+        <Card className="border-primary/20 col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <IconUpload size={18} /> Upload links & requests
@@ -622,7 +639,7 @@ function FeatureChip({
     <div
       className={cn(
         "inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5",
-        "border-primary/20 bg-primary/5 text-purple-100 dark:text-purple-200",
+        "border-primary/20 bg-primary/5 text-primary",
       )}
     >
       <span className="opacity-90">{icon}</span>

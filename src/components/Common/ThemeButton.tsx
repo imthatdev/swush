@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "../ui/label";
 import { useColorScheme } from "@/hooks/use-scheme";
+import { setThemeWithCurtain } from "@/lib/theme-transition";
 
 export default function ThemeButton() {
   const { theme, setTheme } = useTheme();
@@ -65,7 +66,7 @@ export default function ThemeButton() {
                 onValueChange={(v: string) => {
                   const next = v as (typeof SCHEMES)[number];
                   setPendingScheme(next);
-                  setScheme(next);
+                  setThemeWithCurtain(setScheme, next);
                 }}
               >
                 <SelectTrigger className="w-full">
@@ -106,7 +107,7 @@ export default function ThemeButton() {
                 value={pendingMode}
                 onValueChange={(v) => {
                   setPendingMode(v);
-                  setTheme(v);
+                  setThemeWithCurtain(setTheme, v);
                 }}
               >
                 <SelectTrigger className="w-full">
