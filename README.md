@@ -193,6 +193,9 @@ APACHE 2.0 © 2026 Iconical
 
 - X: [x.com/imthatdevy](https://x.com/imthatdevy)
 - Website: [iconical.dev](https://iconical.dev)
+- Changelog: [iconical.dev/changelog/swush](https://iconical.dev/changelog/swush)
+- Roadmap: [iconical.dev/roadmap/swush](https://iconical.dev/roadmap/swush)
+- Feedback: [iconical.dev/feedback/swush](https://iconical.dev/feedback/swush)
 - GitHub: [imthatdev](https://github.com/imthatdev)
 - Email: him@iconical.dev
 
