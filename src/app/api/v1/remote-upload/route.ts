@@ -11,7 +11,7 @@ import {
 
 export const DELETE = withApiError(async function DELETE(req: NextRequest) {
   let user = await getCurrentUser();
-  if (!user) user = await getCurrentUserFromToken(req);
+  if (!user) user = await getCurrentUserFromToken(req, undefined, ["upload"]);
   if (!user)
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   const blocked = await requireUserFeature(user.id, "files");
@@ -38,7 +38,7 @@ export const runtime = "nodejs";
 
 export const POST = withApiError(async function POST(req: NextRequest) {
   let user = await getCurrentUser();
-  if (!user) user = await getCurrentUserFromToken(req);
+  if (!user) user = await getCurrentUserFromToken(req, undefined, ["upload"]);
   if (!user)
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   const blocked = await requireUserFeature(user.id, "files");
@@ -74,7 +74,7 @@ export const POST = withApiError(async function POST(req: NextRequest) {
 
 export const GET = withApiError(async function GET(req: NextRequest) {
   let user = await getCurrentUser();
-  if (!user) user = await getCurrentUserFromToken(req);
+  if (!user) user = await getCurrentUserFromToken(req, undefined, ["upload"]);
   if (!user)
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   const blocked = await requireUserFeature(user.id, "files");

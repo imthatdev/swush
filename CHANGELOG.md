@@ -11,6 +11,19 @@ This project follows [Semantic Versioning](https://iconical.dev/versioning).
 
 ---
 
+## v1.0.7 – API Key Allowlist for Remote Uploads 🔐
+
+**Released: February 22, 2026**
+
+Check the docs for the new API key allowlist feature, which enables automation with Apple Shortcuts for remote uploads.
+
+### 🛠️ API & Automation
+
+- Added API key allowlist support for `POST/GET/DELETE /api/v1/remote-upload` to enable Apple Shortcuts and other automations without cookie sessions.
+- Enforced `upload` API scope (or `all`) for `/api/v1/remote-upload` token-based access.
+
+---
+
 ## v1.0.6 – Vault UX & Selection Improvements 🎯
 
 **Released: February 22, 2026**

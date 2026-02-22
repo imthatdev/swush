@@ -148,6 +148,7 @@ function isApiKeyRequestAllowed(req: NextRequest) {
   const pathname = req.nextUrl?.pathname || "";
   const allowlist = [
     { prefix: "/api/v1/upload", methods: ["POST", "PUT"] },
+    { prefix: "/api/v1/remote-upload", methods: ["POST", "GET", "DELETE"] },
     { prefix: "/api/v1/shorten", methods: ["POST"] },
     { prefix: "/api/v1/shorten/p", methods: ["POST"] },
     { prefix: "/api/graphql", methods: ["POST"] },
