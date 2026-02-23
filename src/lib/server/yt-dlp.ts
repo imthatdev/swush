@@ -1,3 +1,20 @@
+/*
+ *   Copyright (c) 2026 Laith Alkhaddam aka Iconical.
+ *   All rights reserved.
+
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+
+ *   http://www.apache.org/licenses/LICENSE-2.0
+
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
 import { spawn, spawnSync } from "child_process";
 import { tmpdir } from "os";
 import path from "path";
@@ -30,6 +47,7 @@ export type YtDlpResult = {
   filePath: string;
   fileName: string;
   bytes: number;
+  sourceTitle?: string;
 };
 
 export async function downloadWithYtDlp(
@@ -44,7 +62,10 @@ export async function downloadWithYtDlp(
   }
 
   const id = nanoid();
-  const outTemplate = path.join(tmpdir(), `${prefix}-${id}.%(ext)s`);
+  const outTemplate = path.join(
+    tmpdir(),
+    `${prefix}-${id}-%(title).200B.%(ext)s`,
+  );
 
   return new Promise<YtDlpResult>((resolve, reject) => {
     const args = [
@@ -89,13 +110,28 @@ export async function downloadWithYtDlp(
       try {
         const dir = tmpdir();
         const files = await readdir(dir);
-        const match = files.find((f) => f.startsWith(`${prefix}-${id}.`));
+        const match = files.find(
+          (f) =>
+            f.startsWith(`${prefix}-${id}-`) ||
+            f.startsWith(`${prefix}-${id}.`),
+        );
         if (!match)
           return reject(new Error("yt-dlp did not write expected file"));
         const full = path.join(dir, match);
         const st = await stat(full);
+        const ext = path.extname(match);
+        const rawBase = ext ? match.slice(0, -ext.length) : match;
+        const titlePrefix = `${prefix}-${id}-`;
+        const sourceTitle = rawBase.startsWith(titlePrefix)
+          ? rawBase.slice(titlePrefix.length).trim()
+          : undefined;
         if (typeof onProgress === "function") onProgress(100);
-        resolve({ filePath: full, fileName: match, bytes: st.size });
+        resolve({
+          filePath: full,
+          fileName: match,
+          bytes: st.size,
+          sourceTitle,
+        });
       } catch (err) {
         reject(err);
       }

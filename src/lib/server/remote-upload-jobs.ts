@@ -50,6 +50,13 @@ export type RemoteUploadJob = {
   updatedAt: Date;
 };
 
+function appendExtIfMissing(name: string, ext: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return trimmed;
+  if (!ext || trimmed.toLowerCase().endsWith(ext.toLowerCase())) return trimmed;
+  return `${trimmed}${ext}`;
+}
+
 export async function createRemoteUploadJob(
   userId: string,
   url: string,
@@ -132,17 +139,16 @@ async function runRemoteUploadJob(id: string) {
     const ext = path.extname(tmp.fileName) || "";
     const storedName = `${nanoid()}${ext}`;
 
-    let originalName: string;
-    if (job.name && job.name.trim()) {
-      const trimmed = job.name.trim();
-      if (ext && !trimmed.toLowerCase().endsWith(ext.toLowerCase())) {
-        originalName = trimmed + ext;
-      } else {
-        originalName = trimmed;
-      }
-    } else {
-      originalName = tmp.fileName || job.url;
-    }
+    const sourceName = tmp.sourceTitle?.trim();
+    const payloadName = job.name?.trim();
+    const fallbackName = `remote-${nanoid(8)}`;
+    const baseName =
+      sourceName && sourceName.length > 0
+        ? sourceName
+        : payloadName && payloadName.length > 0
+          ? payloadName
+          : fallbackName;
+    const originalName = appendExtIfMissing(baseName, ext);
 
     const driver = await getDefaultStorageDriver();
     await putFileToStorage({
@@ -177,8 +183,7 @@ async function runRemoteUploadJob(id: string) {
 
     if (
       effectiveMime.startsWith("video/") ||
-      (effectiveMime.startsWith("image/") &&
-        effectiveMime !== "image/svg+xml")
+      (effectiveMime.startsWith("image/") && effectiveMime !== "image/svg+xml")
     ) {
       const previewJobId = await enqueuePreviewJob({
         userId: job.userId,

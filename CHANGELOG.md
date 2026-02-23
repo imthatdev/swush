@@ -11,6 +11,17 @@ This project follows [Semantic Versioning](https://iconical.dev/versioning).
 
 ---
 
+## v1.0.10 – Remote Upload Metadata Naming 🔌
+
+**Released: February 23, 2026**
+
+- Improved remote upload naming to prefer provider/source metadata (e.g., title/caption) when available.
+- Added deterministic fallback order for remote uploads: source title → UI/API-provided name → generated `remote-xxxxxxxx`.
+- Ensured detected file extension is appended when the chosen name does not include it.
+- Fixed yt-dlp output file discovery for title-based output templates to avoid false "expected file" misses.
+
+---
+
 ## v1.0.9 – Release Tagging Patch 🏷️
 
 **Released: February 22, 2026**
