@@ -78,6 +78,7 @@ import {
 } from "../ui/select";
 import PageLayout from "../Common/PageLayout";
 import FilterPanel from "@/components/Common/FilterPanel";
+import { fetchSafeInternalApi } from "@/lib/security/http-client";
 import SelectionBar from "@/components/Common/SelectionBar";
 import TagFilter from "./TagFilter";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -277,7 +278,7 @@ export default function VaultClient({
 
   const loadPendingApprovals = useCallback(async () => {
     try {
-      const res = await fetch(apiV1("/upload-requests/queue"), {
+      const res = await fetchSafeInternalApi(apiV1("/upload-requests/queue"), {
         cache: "no-store",
       });
       if (!res.ok) return;
@@ -339,9 +340,12 @@ export default function VaultClient({
       try {
         const params = buildListParams(nextPage);
         const filesPath = apiV1("/files");
-        const res = await fetch(`${filesPath}?${params.toString()}`, {
-          cache: "no-store",
-        });
+        const res = await fetchSafeInternalApi(
+          `${filesPath}?${params.toString()}`,
+          {
+            cache: "no-store",
+          },
+        );
         const json = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(json?.message || "Failed to load files");
         const nextItems = Array.isArray(json)
@@ -430,7 +434,7 @@ export default function VaultClient({
     if (approvalAction) return;
     setApprovalAction(approval.itemId);
     try {
-      const res = await fetch(
+      const res = await fetchSafeInternalApi(
         apiV1Path(
           "/upload-requests",
           approval.requestId,
@@ -465,7 +469,7 @@ export default function VaultClient({
   const loadDuplicates = async () => {
     setDuplicatesLoading(true);
     try {
-      const res = await fetch(apiV1("/files/duplicates"));
+      const res = await fetchSafeInternalApi(apiV1("/files/duplicates"));
       const json = await res.json();
       if (!res.ok)
         throw new Error(json?.message || "Failed to load duplicates");
@@ -480,8 +484,8 @@ export default function VaultClient({
   const loadFilterOptions = useCallback(async () => {
     try {
       const [foldersRes, tagsRes] = await Promise.all([
-        fetch(apiV1("/folders"), { cache: "no-store" }),
-        fetch(apiV1("/tags"), { cache: "no-store" }),
+        fetchSafeInternalApi(apiV1("/folders"), { cache: "no-store" }),
+        fetchSafeInternalApi(apiV1("/tags"), { cache: "no-store" }),
       ]);
       const [foldersJson, tagsJson] = await Promise.all([
         foldersRes.json().catch(() => []),
@@ -668,7 +672,7 @@ export default function VaultClient({
 
   const fetchFileById = useCallback(async (id: string) => {
     try {
-      const res = await fetch(apiV1Path("/files", id), {
+      const res = await fetchSafeInternalApi(apiV1Path("/files", id), {
         cache: "no-store",
       });
       if (!res.ok) return null;
@@ -839,7 +843,7 @@ export default function VaultClient({
     toast.loading("Deleting files...");
     try {
       const { ok, fail } = await performBulk(toDelete, async (id) =>
-        fetch(apiV1Path("/files", id), { method: "DELETE" }),
+        fetchSafeInternalApi(apiV1Path("/files", id), { method: "DELETE" }),
       );
       toast.dismiss();
       setItems((prev) => prev.filter((f) => !toDelete.includes(f.id)));
@@ -857,28 +861,40 @@ export default function VaultClient({
     }
   };
 
+  const runBulkFilePatch = async (
+    targets: string[],
+    body: Record<string, unknown>,
+    okMessage: (ok: number) => string,
+  ) => {
+    const { ok, fail } = await performBulk(targets, async (id) =>
+      fetchSafeInternalApi(apiV1Path("/files", id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    );
+    if (fail.length) {
+      toast.error(`Updated ${ok}/${targets.length}.`, {
+        description: fail[0]?.error || "Some updates failed.",
+      });
+    } else {
+      toast.success(okMessage(ok));
+    }
+  };
+
   const bulkSetVisibility = async (nextPublic: boolean) => {
     if (selectedIds.length === 0) return;
     const targets = [...selectedIds];
+
     try {
-      const { ok, fail } = await performBulk(targets, async (id) =>
-        fetch(apiV1Path("/files", id), {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isPublic: nextPublic }),
-        }),
-      );
-      if (fail.length) {
-        toast.error(`Updated ${ok}/${targets.length}.`, {
-          description: fail[0]?.error || "Some updates failed.",
-        });
-      } else {
-        toast.success(
+      await runBulkFilePatch(
+        targets,
+        { isPublic: nextPublic },
+        (ok) =>
           `${nextPublic ? "Public" : "Private"} set for ${ok} file${
             ok === 1 ? "" : "s"
           }.`,
-        );
-      }
+      );
     } finally {
       clearSelection();
       await handleRefresh();
@@ -891,21 +907,13 @@ export default function VaultClient({
   }) => {
     if (selectedIds.length === 0) return;
     const targets = [...selectedIds];
+
     try {
-      const { ok, fail } = await performBulk(targets, async (id) =>
-        fetch(apiV1Path("/files", id), {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }),
+      await runBulkFilePatch(
+        targets,
+        payload,
+        (ok) => `Updated ${ok} file${ok === 1 ? "" : "s"}.`,
       );
-      if (fail.length) {
-        toast.error(`Updated ${ok}/${targets.length}.`, {
-          description: fail[0]?.error || "Some updates failed.",
-        });
-      } else {
-        toast.success(`Updated ${ok} file${ok === 1 ? "" : "s"}.`);
-      }
     } finally {
       clearSelection();
       await handleRefresh();
@@ -931,9 +939,12 @@ export default function VaultClient({
         if (vaultSort) params.set("sort", vaultSort);
 
         const filesPath = apiV1("/files");
-        const res = await fetch(`${filesPath}?${params.toString()}`, {
-          cache: "no-store",
-        });
+        const res = await fetchSafeInternalApi(
+          `${filesPath}?${params.toString()}`,
+          {
+            cache: "no-store",
+          },
+        );
         const json = await res.json().catch(() => ({}));
         if (!res.ok) break;
         const pageItems = Array.isArray(json.items) ? json.items : [];

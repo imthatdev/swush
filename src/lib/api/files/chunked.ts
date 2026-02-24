@@ -135,12 +135,30 @@ const RETRY_HINTS = {
 } as const;
 
 function safeJoin(base: string, ...segments: string[]) {
-  const targetPath = path.join(base, ...segments);
-  const resolved = path.resolve(targetPath);
-  if (!resolved.startsWith(path.resolve(base))) {
+  const normalizedBase = path.normalize(base);
+  const sanitized = segments
+    .flatMap((segment) =>
+      segment
+        .replace(/^[\\/]+/, "")
+        .split(/[\\/]+/)
+        .filter(Boolean),
+    )
+    .map((part) => {
+      if (part === "." || part === "..") {
+        throw new Error("Path traversal detected");
+      }
+      return part;
+    });
+  const normalized = path.normalize(
+    [normalizedBase, ...sanitized].join(path.sep),
+  );
+  const basePrefix = normalizedBase.endsWith(path.sep)
+    ? normalizedBase
+    : `${normalizedBase}${path.sep}`;
+  if (normalized !== normalizedBase && !normalized.startsWith(basePrefix)) {
     throw new Error("Path traversal detected");
   }
-  return resolved;
+  return normalized;
 }
 
 async function getChunkRoot() {
@@ -874,8 +892,7 @@ export async function completeChunkedUpload(req: NextRequest) {
 
     if (
       effectiveMime.startsWith("video/") ||
-      (effectiveMime.startsWith("image/") &&
-        effectiveMime !== "image/svg+xml")
+      (effectiveMime.startsWith("image/") && effectiveMime !== "image/svg+xml")
     ) {
       const previewJobId = await enqueuePreviewJob({
         userId: user.id,

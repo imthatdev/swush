@@ -51,12 +51,19 @@ export type YtDlpResult = {
   sourceTitle?: string;
 };
 
+function sanitizeFileSegment(value: string) {
+  const safe = value.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64);
+  if (!safe) throw new Error("Invalid file segment");
+  return safe;
+}
+
 export async function downloadWithYtDlp(
   url: string,
   prefix = "yt",
   onProgress?: (percent?: number) => void,
 ): Promise<YtDlpResult> {
   const safeUrl = assertSafeExternalHttpUrl(url);
+  const safePrefix = sanitizeFileSegment(prefix);
 
   if (!checkYtDlpAvailable()) {
     throw new YtDlpNotFoundError(
@@ -65,9 +72,10 @@ export async function downloadWithYtDlp(
   }
 
   const id = nanoid();
+  const safeId = sanitizeFileSegment(id);
   const outTemplate = path.join(
     tmpdir(),
-    `${prefix}-${id}-%(title).200B.%(ext)s`,
+    `${safePrefix}-${safeId}-%(title).200B.%(ext)s`,
   );
 
   return new Promise<YtDlpResult>((resolve, reject) => {
@@ -115,8 +123,8 @@ export async function downloadWithYtDlp(
         const files = await readdir(dir);
         const match = files.find(
           (f) =>
-            f.startsWith(`${prefix}-${id}-`) ||
-            f.startsWith(`${prefix}-${id}.`),
+            f.startsWith(`${safePrefix}-${safeId}-`) ||
+            f.startsWith(`${safePrefix}-${safeId}.`),
         );
         if (!match)
           return reject(new Error("yt-dlp did not write expected file"));
@@ -124,7 +132,7 @@ export async function downloadWithYtDlp(
         const st = await stat(full);
         const ext = path.extname(match);
         const rawBase = ext ? match.slice(0, -ext.length) : match;
-        const titlePrefix = `${prefix}-${id}-`;
+        const titlePrefix = `${safePrefix}-${safeId}-`;
         const sourceTitle = rawBase.startsWith(titlePrefix)
           ? rawBase.slice(titlePrefix.length).trim()
           : undefined;

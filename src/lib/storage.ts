@@ -110,12 +110,27 @@ export function buildObjectKey({ userId, storedName }: StorageTarget) {
 }
 
 function safeJoin(base: string, target: string) {
-  const targetPath = path.join(base, target);
-  const resolved = path.resolve(targetPath);
-  if (!resolved.startsWith(path.resolve(base))) {
+  const normalizedBase = path.normalize(base);
+  const sanitized = target
+    .replace(/^[\\/]+/, "")
+    .split(/[\\/]+/)
+    .filter(Boolean)
+    .map((part) => {
+      if (part === "." || part === "..") {
+        throw new Error("Path traversal detected");
+      }
+      return part;
+    });
+  const normalized = path.normalize(
+    [normalizedBase, ...sanitized].join(path.sep),
+  );
+  const basePrefix = normalizedBase.endsWith(path.sep)
+    ? normalizedBase
+    : `${normalizedBase}${path.sep}`;
+  if (normalized !== normalizedBase && !normalized.startsWith(basePrefix)) {
     throw new Error("Path traversal detected");
   }
-  return resolved;
+  return normalized;
 }
 
 function buildLocalPath(root: string, target: StorageTarget) {

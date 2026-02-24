@@ -59,7 +59,12 @@ export function decryptApiKey(payload: {
   const key = getSecretKey();
   const iv = Buffer.from(payload.iv, "base64");
   const tag = Buffer.from(payload.tag, "base64");
-  const decipher = createDecipheriv("aes-256-gcm", key, iv);
+  if (tag.length !== 16) {
+    throw new Error("Invalid authentication tag length");
+  }
+  const decipher = createDecipheriv("aes-256-gcm", key, iv, {
+    authTagLength: 16,
+  });
   decipher.setAuthTag(tag);
   const decrypted = Buffer.concat([
     decipher.update(Buffer.from(payload.encrypted, "base64")),

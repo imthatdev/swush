@@ -20,6 +20,7 @@ import type { AdminMetrics } from "@/types/admin-metrics";
 import type { AdminJobRun, AdminJobName } from "@/types/admin-jobs";
 import { apiV1 } from "@/lib/api-path";
 import { getApiErrorMessage, readApiError } from "@/lib/client/api-error";
+import { fetchSafeInternalApi } from "@/lib/security/http-client";
 
 export type AdminListUsersOptions = {
   searchValue?: string;
@@ -197,7 +198,7 @@ export async function adminClearUser({
   userId: string;
   options: Record<string, unknown>;
 }) {
-  const res = await fetch(apiV1(`/admin/users/${userId}`), {
+  const res = await fetchSafeInternalApi(apiV1(`/admin/users/${userId}`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ type: "clear", options }),
@@ -217,7 +218,7 @@ export async function adminClearUser({
 }
 
 async function adminPatchUser(userId: string, body: Record<string, unknown>) {
-  const res = await fetch(apiV1(`/admin/users/${userId}`), {
+  const res = await fetchSafeInternalApi(apiV1(`/admin/users/${userId}`), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

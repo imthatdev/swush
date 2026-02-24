@@ -35,6 +35,13 @@ import {
   type StorageDriver,
 } from "@/lib/storage";
 import { createNotification } from "@/lib/server/notifications";
+import { resolveWithin } from "@/lib/security/path";
+
+function safeFileExt(name: string) {
+  const ext = path.extname(name).toLowerCase();
+  if (/^\.[a-z0-9]{1,16}$/i.test(ext)) return ext;
+  return ".bin";
+}
 
 export type PreviewJobStatus = "queued" | "processing" | "ready" | "failed";
 
@@ -54,7 +61,8 @@ function isPreviewSupported(mimeType?: string | null) {
   if (!mimeType) return false;
   if (mimeType.startsWith("video/")) return true;
   if (mimeType === "image/gif") return true;
-  if (mimeType.startsWith("image/") && mimeType !== "image/svg+xml") return true;
+  if (mimeType.startsWith("image/") && mimeType !== "image/svg+xml")
+    return true;
   return false;
 }
 
@@ -127,10 +135,12 @@ async function generatePreview(params: {
   driver: StorageDriver;
   mimeType?: string | null;
 }) {
-  const tmpDir = await mkdtemp(path.join(os.tmpdir(), "swush-preview-"));
-  const inputExt = path.extname(params.storedName) || ".bin";
-  const inputPath = path.join(tmpDir, `in-${Date.now()}${inputExt}`);
-  const outputPath = path.join(tmpDir, `out-${Date.now()}.png`);
+  const tmpDir = await mkdtemp(
+    `${path.resolve(os.tmpdir())}${path.sep}swush-preview-`,
+  );
+  const inputExt = safeFileExt(params.storedName);
+  const inputPath = resolveWithin(tmpDir, `in-${Date.now()}${inputExt}`);
+  const outputPath = resolveWithin(tmpDir, `out-${Date.now()}.png`);
 
   try {
     const written = await streamStorageToFile(
@@ -179,7 +189,10 @@ export async function enqueuePreviewJob(input: PreviewJobInput) {
     .select({ id: previewJobs.id, status: previewJobs.status })
     .from(previewJobs)
     .where(
-      and(eq(previewJobs.userId, input.userId), eq(previewJobs.fileId, input.fileId)),
+      and(
+        eq(previewJobs.userId, input.userId),
+        eq(previewJobs.fileId, input.fileId),
+      ),
     )
     .orderBy(desc(previewJobs.createdAt))
     .limit(1);

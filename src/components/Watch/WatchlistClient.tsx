@@ -63,6 +63,7 @@ import {
 import { cn } from "@/lib/utils";
 import SelectionBar from "@/components/Common/SelectionBar";
 import { useUserFeatures } from "@/hooks/use-user-features";
+import { fetchSafeInternalApi } from "@/lib/security/http-client";
 
 type SearchItem = {
   provider: "tmdb";
@@ -196,9 +197,12 @@ export default function WatchClient({ username }: { username: string }) {
         if (tab !== "all") params.set("mediaType", tab);
         if (filterQ.trim()) params.set("q", filterQ.trim());
 
-        const res = await fetch(`${watchlistUrl()}?${params.toString()}`, {
-          cache: "no-store",
-        });
+        const res = await fetchSafeInternalApi(
+          `${watchlistUrl()}?${params.toString()}`,
+          {
+            cache: "no-store",
+          },
+        );
         if (res.ok) {
           const json = await res.json();
           if (cancelled) return;
@@ -239,9 +243,12 @@ export default function WatchClient({ username }: { username: string }) {
     }
     const ctrl = new AbortController();
     setLoading(true);
-    fetch(watchUrl(`/search?q=${encodeURIComponent(debouncedQ)}`), {
-      signal: ctrl.signal,
-    })
+    fetchSafeInternalApi(
+      watchUrl(`/search?q=${encodeURIComponent(debouncedQ)}`),
+      {
+        signal: ctrl.signal,
+      },
+    )
       .then((r) => r.json())
       .then((d) => setSearch(d.items || []))
       .catch(() => {})
@@ -255,7 +262,7 @@ export default function WatchClient({ username }: { username: string }) {
   }, [username]);
 
   async function add(it: SearchItem) {
-    const res = await fetch(watchlistUrl(), {
+    const res = await fetchSafeInternalApi(watchlistUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -289,7 +296,9 @@ export default function WatchClient({ username }: { username: string }) {
   }
 
   async function remove(id: string) {
-    const res = await fetch(watchlistUrl(id), { method: "DELETE" });
+    const res = await fetchSafeInternalApi(watchlistUrl(id), {
+      method: "DELETE",
+    });
     if (res.ok) {
       setItems((prev) => prev.filter((x) => x.id !== id));
       setTotalCount((prev) => Math.max(0, prev - 1));
@@ -310,7 +319,7 @@ export default function WatchClient({ username }: { username: string }) {
     setOpenTv(true);
     setSeasonsLoading(true);
     try {
-      const res = await fetch(
+      const res = await fetchSafeInternalApi(
         watchUrl(`/tv/${encodeURIComponent(item.providerId)}`),
         { cache: "no-store" },
       );
@@ -357,7 +366,7 @@ export default function WatchClient({ username }: { username: string }) {
   async function loadSeasonEpisodes(tvProviderId: string, season: number) {
     setSelectedSeason(season);
     if (seasonEpisodes[season]) return;
-    const res = await fetch(
+    const res = await fetchSafeInternalApi(
       watchUrl(`/tv/${encodeURIComponent(tvProviderId)}/season/${season}`),
     );
     if (res.ok) {
@@ -379,7 +388,7 @@ export default function WatchClient({ username }: { username: string }) {
     episode: number,
     checked: boolean,
   ) {
-    const res = await fetch(watchlistUrl(itemId, "progress"), {
+    const res = await fetchSafeInternalApi(watchlistUrl(itemId, "progress"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ season, episode, watched: checked }),
@@ -424,11 +433,18 @@ export default function WatchClient({ username }: { username: string }) {
 
   const toggleAllOnPage = () => togglePage(paginatedItems.map((x) => x.id));
 
+  const patchWatchlistItem = (id: string, body: Record<string, unknown>) =>
+    fetchSafeInternalApi(watchlistUrl(id), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
   async function bulkDeleteSelected() {
     if (selectedIds.length === 0) return;
     const toDelete = [...selectedIds];
     const { ok, fail } = await performBulk(toDelete, async (id) =>
-      fetch(watchlistUrl(id), { method: "DELETE" }),
+      fetchSafeInternalApi(watchlistUrl(id), { method: "DELETE" }),
     );
     setItems((prev) => prev.filter((x) => !toDelete.includes(x.id)));
     if (ok > 0) {
@@ -453,11 +469,7 @@ export default function WatchClient({ username }: { username: string }) {
   }
 
   async function setItemVisibility(id: string, visible: boolean) {
-    const res = await fetch(watchlistUrl(id), {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isPublic: visible }),
-    });
+    const res = await patchWatchlistItem(id, { isPublic: visible });
     if (res.ok) {
       const updated = await res.json();
       setItems((prev) =>
@@ -474,19 +486,9 @@ export default function WatchClient({ username }: { username: string }) {
   async function bulkSetVisibility(visible: boolean) {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
-    const reqs = ids.map((id) =>
-      fetch(watchlistUrl(id), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isPublic: visible }),
-      }),
+    const { ok, fail } = await performBulk(ids, (id) =>
+      patchWatchlistItem(id, { isPublic: visible }),
     );
-    const results = await Promise.allSettled(reqs);
-    const ok = results.filter(
-      (r) =>
-        r.status === "fulfilled" &&
-        (r as PromiseFulfilledResult<Response>).value.ok,
-    ).length;
     if (ok > 0) {
       setItems((prev) =>
         prev.map((x) => (ids.includes(x.id) ? { ...x, isPublic: visible } : x)),
@@ -494,6 +496,17 @@ export default function WatchClient({ username }: { username: string }) {
       toast.success(
         `${visible ? "Made public" : "Made private"} ${ok} item(s)`,
       );
+      if (ids.length > 0) {
+        cacheRef.current.clear();
+      }
+      clearSelection();
+      return;
+    }
+
+    if (fail.length) {
+      toast.error(`Updated ${ok}/${ids.length}.`, {
+        description: fail[0]?.error || "Some updates failed.",
+      });
     } else {
       toast.error("No items updated");
     }
@@ -507,11 +520,7 @@ export default function WatchClient({ username }: { username: string }) {
 
   async function saveNotes() {
     if (!notesItem) return;
-    const res = await fetch(watchlistUrl(notesItem.id), {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notes: notesText }),
-    });
+    const res = await patchWatchlistItem(notesItem.id, { notes: notesText });
     if (res.ok) {
       const updated = await res.json();
       setItems((prev) =>
@@ -552,7 +561,7 @@ export default function WatchClient({ username }: { username: string }) {
       const [sStr, eStr] = key.split(":");
       const s = Number(sStr),
         e = Number(eStr);
-      return fetch(watchlistUrl(activeItem.id, "progress"), {
+      return fetchSafeInternalApi(watchlistUrl(activeItem.id, "progress"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ season: s, episode: e, watched }),
@@ -596,7 +605,7 @@ export default function WatchClient({ username }: { username: string }) {
       await Promise.all(
         toFetch.map(async (it) => {
           try {
-            const res = await fetch(
+            const res = await fetchSafeInternalApi(
               watchUrl(`/tv/${encodeURIComponent(it.providerId)}`),
               { cache: "no-store" },
             );
@@ -624,7 +633,9 @@ export default function WatchClient({ username }: { username: string }) {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const res = await fetch(apiV1("/anilist/sync"), { method: "POST" });
+      const res = await fetchSafeInternalApi(apiV1("/anilist/sync"), {
+        method: "POST",
+      });
       const data = await res.json();
       if (res.ok) {
         toast.success("AniList sync complete");

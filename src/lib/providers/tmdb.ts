@@ -16,6 +16,7 @@
  */
 
 import { getIntegrationSecrets } from "@/lib/server/runtime-settings";
+import { fetchSafeExternalHttp } from "@/lib/security/http-client";
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
@@ -61,7 +62,7 @@ export async function tmdbSearchMulti(q: string): Promise<TMDBSearchItem[]> {
   url.searchParams.set("include_adult", "false");
   url.searchParams.set("api_key", tmdbApiKey);
 
-  const res = await fetch(url.toString(), {
+  const res = await fetchSafeExternalHttp(url.toString(), {
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`tmdb search failed: ${res.status}`);
@@ -116,9 +117,12 @@ export async function tmdbGetTitle(type: "movie" | "tv", id: string) {
 
   const safeId = parsePositiveInt(id, "id");
 
-  const res = await fetch(tmdbUrl(`/${type}/${safeId}`, tmdbApiKey), {
-    cache: "no-store",
-  });
+  const res = await fetchSafeExternalHttp(
+    tmdbUrl(`/${type}/${safeId}`, tmdbApiKey),
+    {
+      cache: "no-store",
+    },
+  );
 
   if (!res.ok) throw new Error(`tmdb get ${type} failed: ${res.status}`);
   const r = await res.json();
@@ -172,7 +176,7 @@ export async function tmdbGetSeasonEpisodes(
   if (!Number.isSafeInteger(seasonNumber) || seasonNumber <= 0) {
     throw new Error("Invalid seasonNumber");
   }
-  const res = await fetch(
+  const res = await fetchSafeExternalHttp(
     tmdbUrl(`/tv/${safeTvId}/season/${seasonNumber}`, tmdbApiKey),
     { cache: "no-store" },
   );

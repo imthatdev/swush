@@ -20,18 +20,19 @@
 import { useCallback, useState } from "react";
 import type { Upload } from "@/types";
 import { apiV1 } from "@/lib/api-path";
+import { fetchSafeInternalApi } from "@/lib/security/http-client";
 
 export function useBulkDelete(
   items: Upload[],
   setItems: React.Dispatch<React.SetStateAction<Upload[]>>,
   selectedIds: Set<string>,
-  clearSelection: () => void
+  clearSelection: () => void,
 ) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const keyFor = useCallback(
     (f: Upload) => (f.slug ? String(f.slug) : f.id),
-    []
+    [],
   );
 
   const confirmBulkDelete = useCallback(() => {
@@ -48,17 +49,17 @@ export function useBulkDelete(
       ids.map(async (id) => {
         const f = mapById.get(id);
         if (!f) return { id, ok: false };
-        const res = await fetch(apiV1(`/files/${keyFor(f)}`), {
+        const res = await fetchSafeInternalApi(apiV1(`/files/${keyFor(f)}`), {
           method: "DELETE",
         });
         return { id, ok: res.ok };
-      })
+      }),
     );
 
     const okIds = results
       .filter(
         (r): r is PromiseFulfilledResult<{ id: string; ok: boolean }> =>
-          r.status === "fulfilled" && r.value.ok
+          r.status === "fulfilled" && r.value.ok,
       )
       .map((r) => r.value.id);
 

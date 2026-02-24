@@ -36,6 +36,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import CopyButton from "@/components/Common/CopyButton";
 import { apiV1, apiV1Path } from "@/lib/api-path";
+import { fetchSafeInternalApi } from "@/lib/security/http-client";
 import { shareUrl } from "@/lib/api/helpers";
 import { IconShare, IconTrash } from "@tabler/icons-react";
 import ShareQrButton from "@/components/Common/ShareQrButton";
@@ -101,7 +102,7 @@ export default function UploadLinksClient() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await fetch(apiV1("/upload-requests"), {
+      const res = await fetchSafeInternalApi(apiV1("/upload-requests"), {
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Failed to load upload links");
@@ -154,7 +155,7 @@ export default function UploadLinksClient() {
     }
     setCreating(true);
     try {
-      const res = await fetch(apiV1("/upload-requests"), {
+      const res = await fetchSafeInternalApi(apiV1("/upload-requests"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -195,11 +196,14 @@ export default function UploadLinksClient() {
       cur.map((item) => (item.id === id ? { ...item, isActive: next } : item)),
     );
     try {
-      const res = await fetch(apiV1Path("/upload-requests", id), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: next }),
-      });
+      const res = await fetchSafeInternalApi(
+        apiV1Path("/upload-requests", id),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: next }),
+        },
+      );
       if (!res.ok) throw new Error("Failed to update");
     } catch (err) {
       setItems(prev);
@@ -211,9 +215,12 @@ export default function UploadLinksClient() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(apiV1Path("/upload-requests", id), {
-        method: "DELETE",
-      });
+      const res = await fetchSafeInternalApi(
+        apiV1Path("/upload-requests", id),
+        {
+          method: "DELETE",
+        },
+      );
       if (!res.ok) throw new Error("Failed to delete");
       setItems((cur) => cur.filter((item) => item.id !== id));
       toast.success("Upload link removed");
@@ -229,9 +236,12 @@ export default function UploadLinksClient() {
     setQueueOpen(true);
     setQueueLoading(true);
     try {
-      const res = await fetch(apiV1Path("/upload-requests", link.id, "queue"), {
-        cache: "no-store",
-      });
+      const res = await fetchSafeInternalApi(
+        apiV1Path("/upload-requests", link.id, "queue"),
+        {
+          cache: "no-store",
+        },
+      );
       if (!res.ok) throw new Error("Failed to load queue");
       const json = (await res.json()) as { items?: typeof queueItems };
       setQueueItems(Array.isArray(json.items) ? json.items : []);
@@ -273,7 +283,7 @@ export default function UploadLinksClient() {
   ) => {
     if (!queueTarget) return;
     try {
-      const res = await fetch(
+      const res = await fetchSafeInternalApi(
         apiV1(`/upload-requests/${queueTarget.id}/queue/${itemId}`),
         {
           method: "PATCH",

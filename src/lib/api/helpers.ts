@@ -17,6 +17,37 @@
 
 import { assertSafeExternalHttpUrl } from "@/lib/security/url";
 
+type MetaAttrs = Record<string, string>;
+
+function parseMetaTags(html: string): MetaAttrs[] {
+  const metaTagRe = /<meta\b[^>]*>/gi;
+  const attrRe = /([^\s=/>]+)\s*=\s*["']([^"']*)["']/gi;
+  const tags: MetaAttrs[] = [];
+
+  let tagMatch: RegExpExecArray | null = null;
+  while ((tagMatch = metaTagRe.exec(html)) !== null) {
+    const attrs: MetaAttrs = {};
+    const tag = tagMatch[0];
+    let attrMatch: RegExpExecArray | null = null;
+    while ((attrMatch = attrRe.exec(tag)) !== null) {
+      attrs[attrMatch[1].toLowerCase()] = attrMatch[2];
+    }
+    tags.push(attrs);
+  }
+
+  return tags;
+}
+
+function findMetaContent(tags: MetaAttrs[], key: string, value: string) {
+  const wantedKey = key.toLowerCase();
+  const wantedValue = value.toLowerCase();
+  const match = tags.find(
+    (attrs) => (attrs[wantedKey] || "").toLowerCase() === wantedValue,
+  );
+  const content = match?.content?.trim();
+  return content || null;
+}
+
 export async function fetchPageMeta(targetUrl: string): Promise<{
   title?: string | null;
   description?: string | null;
@@ -40,36 +71,23 @@ export async function fetchPageMeta(targetUrl: string): Promise<{
     clearTimeout(t);
     if (!res.ok) return {};
     const html = await res.text();
-
-    const findMeta = (key: string, value: string) => {
-      const re = new RegExp(
-        `<meta[^>]+${key}=["']${value.replace(
-          /[-/\\^$*+?.()|[\]{}]/g,
-          "\\$&",
-        )}["'][^>]*?>`,
-        "i",
-      );
-      const tag = html.match(re)?.[0];
-      if (!tag) return null;
-      const content = tag.match(/content=[\"']([^\"']+)[\"']/i)?.[1];
-      return content || null;
-    };
+    const metaTags = parseMetaTags(html);
 
     let title =
-      findMeta("property", "og:title") ||
-      findMeta("name", "twitter:title") ||
+      findMetaContent(metaTags, "property", "og:title") ||
+      findMetaContent(metaTags, "name", "twitter:title") ||
       html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ||
       null;
 
     let description =
-      findMeta("property", "og:description") ||
-      findMeta("name", "twitter:description") ||
-      findMeta("name", "description") ||
+      findMetaContent(metaTags, "property", "og:description") ||
+      findMetaContent(metaTags, "name", "twitter:description") ||
+      findMetaContent(metaTags, "name", "description") ||
       null;
 
     let imageUrl =
-      findMeta("property", "og:image") ||
-      findMeta("name", "twitter:image") ||
+      findMetaContent(metaTags, "property", "og:image") ||
+      findMetaContent(metaTags, "name", "twitter:image") ||
       null;
 
     title = title?.trim() || null;

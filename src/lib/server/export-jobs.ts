@@ -29,6 +29,13 @@ import { exportJobs } from "@/db/schemas";
 import { appendExportData, type ExportOptions } from "@/lib/server/export";
 import { getDefaultStorageDriver, putStreamToStorage } from "@/lib/storage";
 import { createNotification } from "@/lib/server/notifications";
+import { resolveWithin } from "@/lib/security/path";
+
+function sanitizeFileSegment(value: string) {
+  const safe = value.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 128);
+  if (!safe) throw new Error("Invalid path segment");
+  return safe;
+}
 
 export async function runExportJob(jobId: string, userId: string) {
   const [job] = await db
@@ -53,8 +60,11 @@ export async function runExportJob(jobId: string, userId: string) {
     const options = (job.options ?? null) as ExportOptions | null;
     const driver = await getDefaultStorageDriver();
     if (driver === "s3") {
-      const tmpDir = await mkdtemp(path.join(os.tmpdir(), "swush-export-"));
-      const tmpPath = path.join(tmpDir, `${jobId}.zip`);
+      const tmpDir = await mkdtemp(
+        `${path.resolve(os.tmpdir())}${path.sep}swush-export-`,
+      );
+      const safeJobId = sanitizeFileSegment(jobId);
+      const tmpPath = resolveWithin(tmpDir, `${safeJobId}.zip`);
       const archive = archiver("zip", { zlib: { level: 9 } });
 
       try {

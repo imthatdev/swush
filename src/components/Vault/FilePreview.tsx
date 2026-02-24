@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { StreamVideo } from "@/components/Files/StreamVideo";
 import { loadAudioTrackMeta } from "@/lib/audio-metadata";
+import { fetchSafeSameOrigin } from "@/lib/security/http-client";
 import type { AudioTrackMeta } from "@/types/player";
 import { useInView } from "@/hooks/use-in-view";
 
@@ -453,7 +454,7 @@ export default function FilePreview({
     useEffect(() => {
       if (!enabled || !src) return;
       setLoading(true);
-      fetch(src)
+      fetchSafeSameOrigin(src)
         .then(async (res) => {
           if (!res.ok) throw new Error("Failed to fetch file content");
           return await res.text();
