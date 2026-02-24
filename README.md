@@ -2,6 +2,16 @@
 
 Swush is a secure, self-hosted full‑stack file manager and personal dashboard built with Next.js, TypeScript, TailwindCSS, and Better Auth. It offers a unified platform to manage your files, short links, upload requests, watchlist (anime, movies, TV shows), and more; all with privacy and control in mind.
 
+![GitHub Repo stars](https://img.shields.io/github/stars/imthatdev/swush?style=plastic)
+![Static Badge](https://img.shields.io/badge/Self_Hosted-BADA55)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/imthatdev/swush/build-docker.yml)
+![GitHub branch check runs](https://img.shields.io/github/check-runs/imthatdev/swush/main)
+![GitHub Release](https://img.shields.io/github/v/release/imthatdev/swush)
+![GitHub commits since latest release](https://img.shields.io/github/commits-since/imthatdev/swush/latest)
+![Docker Pulls](https://img.shields.io/docker/pulls/iconical/swush)
+![Docker Image Size](https://img.shields.io/docker/image-size/iconical/swush)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/22c34789c3484808ba2cbea469605c90)](https://app.codacy.com/gh/imthatdev/swush/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+![GitHub License](https://img.shields.io/github/license/imthatdev/swush)
 
 ## ✨ Features
 
