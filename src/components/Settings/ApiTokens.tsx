@@ -63,7 +63,7 @@ import {
   listedApiKeys,
   revokeApiKey,
 } from "@/lib/client/apiTokens";
-import { apiV1 } from "@/lib/api-path";
+import { apiV1Path } from "@/lib/api-path";
 import { usePagination } from "@/hooks/use-pagination";
 import { PaginationFooter } from "@/components/Shared/PaginationFooter";
 import { Switch } from "@/components/ui/switch";
@@ -277,7 +277,7 @@ export function ApiTokens() {
   const fetchApiKeySecret = async (id: string) => {
     const cached = secretCache[id];
     if (cached) return cached;
-    const res = await fetch(apiV1(`/profile/api-keys/${id}/secret`), {
+    const res = await fetch(apiV1Path("/profile/api-keys", id, "secret"), {
       credentials: "include",
       cache: "no-store",
     });

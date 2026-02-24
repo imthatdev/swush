@@ -87,7 +87,7 @@ import { useBulkSelect } from "@/hooks/use-bulk-select";
 import { toast } from "sonner";
 import { SpoilerOverlay } from "@/components/Common/SpoilerOverlay";
 import { User } from "@/types/schema";
-import { apiV1 } from "@/lib/api-path";
+import { apiV1, apiV1Path } from "@/lib/api-path";
 import { BulkTagsFoldersDialog } from "@/components/Dialogs/BulkTagsFoldersDialog";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { Spinner } from "../ui/spinner";
@@ -338,7 +338,8 @@ export default function VaultClient({
       if (!silent) setRefreshing(true);
       try {
         const params = buildListParams(nextPage);
-        const res = await fetch(apiV1(`/files?${params.toString()}`), {
+        const filesPath = apiV1("/files");
+        const res = await fetch(`${filesPath}?${params.toString()}`, {
           cache: "no-store",
         });
         const json = await res.json().catch(() => ({}));
@@ -430,8 +431,11 @@ export default function VaultClient({
     setApprovalAction(approval.itemId);
     try {
       const res = await fetch(
-        apiV1(
-          `/upload-requests/${approval.requestId}/queue/${approval.itemId}`,
+        apiV1Path(
+          "/upload-requests",
+          approval.requestId,
+          "queue",
+          approval.itemId,
         ),
         {
           method: "PATCH",
@@ -664,7 +668,7 @@ export default function VaultClient({
 
   const fetchFileById = useCallback(async (id: string) => {
     try {
-      const res = await fetch(apiV1(`/files/${encodeURIComponent(id)}`), {
+      const res = await fetch(apiV1Path("/files", id), {
         cache: "no-store",
       });
       if (!res.ok) return null;
@@ -835,7 +839,7 @@ export default function VaultClient({
     toast.loading("Deleting files...");
     try {
       const { ok, fail } = await performBulk(toDelete, async (id) =>
-        fetch(apiV1(`/files/${id}`), { method: "DELETE" }),
+        fetch(apiV1Path("/files", id), { method: "DELETE" }),
       );
       toast.dismiss();
       setItems((prev) => prev.filter((f) => !toDelete.includes(f.id)));
@@ -858,7 +862,7 @@ export default function VaultClient({
     const targets = [...selectedIds];
     try {
       const { ok, fail } = await performBulk(targets, async (id) =>
-        fetch(apiV1(`/files/${id}`), {
+        fetch(apiV1Path("/files", id), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isPublic: nextPublic }),
@@ -889,7 +893,7 @@ export default function VaultClient({
     const targets = [...selectedIds];
     try {
       const { ok, fail } = await performBulk(targets, async (id) =>
-        fetch(apiV1(`/files/${id}`), {
+        fetch(apiV1Path("/files", id), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -926,7 +930,8 @@ export default function VaultClient({
         if (folder) params.set("folder", folder);
         if (vaultSort) params.set("sort", vaultSort);
 
-        const res = await fetch(apiV1(`/files?${params.toString()}`), {
+        const filesPath = apiV1("/files");
+        const res = await fetch(`${filesPath}?${params.toString()}`, {
           cache: "no-store",
         });
         const json = await res.json().catch(() => ({}));

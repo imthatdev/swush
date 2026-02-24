@@ -25,6 +25,7 @@ import {
   deleteRemoteUploadJobs,
   RemoteUploadJob,
 } from "@/lib/server/remote-upload-jobs";
+import { assertSafeExternalHttpUrl } from "@/lib/security/url";
 
 export const runtime = "nodejs";
 
@@ -98,11 +99,27 @@ export const POST = withApiError(async function POST(req: NextRequest) {
         { status: 400 },
       );
 
+    const validatedItems = items.map(({ url, name }) => {
+      try {
+        return { url: assertSafeExternalHttpUrl(url), name };
+      } catch {
+        throw new Error("Invalid URL");
+      }
+    });
+
     const jobs = await Promise.all(
-      items.map(({ url, name }) => createRemoteUploadJob(user.id, url, name)),
+      validatedItems.map(({ url, name }) =>
+        createRemoteUploadJob(user.id, url, name),
+      ),
     );
     return NextResponse.json({ jobs });
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.message === "Invalid URL") {
+      return NextResponse.json(
+        { message: "One or more URLs are invalid or unsafe" },
+        { status: 400 },
+      );
+    }
     return NextResponse.json(
       { message: "Failed to create jobs" },
       { status: 500 },

@@ -31,7 +31,7 @@ import ClientFileActions from "@/components/Files/ClientFileActions";
 import { AudioWaveform } from "@/components/Files/AudioWaveform";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { apiV1 } from "@/lib/api-path";
+import { apiV1, apiV1Path } from "@/lib/api-path";
 import PublicOwnerHeader from "@/components/Common/PublicOwnerHeader";
 import { formatBytes, isSpoilerLabel } from "@/lib/helpers";
 import { SpoilerOverlay } from "@/components/Common/SpoilerOverlay";
@@ -244,7 +244,7 @@ export default function FileUnlockAndView({
   useEffect(() => {
     if (!file) return;
     (async () => {
-      await fetch(apiV1(`/files/${encodeURIComponent(file?.slug)}/view`), {
+      await fetch(apiV1Path("/files", file?.slug ?? "", "view"), {
         method: "PATCH",
       });
     })();

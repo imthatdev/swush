@@ -79,7 +79,7 @@ export function SidebarWrapper({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [accordionValue, setAccordionValue] = useState<string>("");
   const { user } = useUser();
-  const { scheme, setScheme, SCHEMES } = useColorScheme();
+  const { scheme, setScheme, SCHEMES, SCHEMES_PREVIEW } = useColorScheme();
   const userRole = user?.role ?? "user";
   const isAdmin = userRole === "admin" || userRole === "owner";
   const isOwner = userRole === "owner";
@@ -417,14 +417,31 @@ export function SidebarWrapper({ children }: { children: React.ReactNode }) {
                   }}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Choose a scheme" />
+                    <SelectValue
+                      placeholder="Choose a scheme"
+                      className="capitalize"
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {SCHEMES.map((s) => (
-                      <SelectItem key={s} value={s} className="capitalize">
-                        {s}
-                      </SelectItem>
-                    ))}
+                    {SCHEMES.map((s) => {
+                      const token = s as keyof typeof SCHEMES_PREVIEW;
+                      const sw = SCHEMES_PREVIEW[token];
+                      return (
+                        <SelectItem key={s} value={s} className="capitalize">
+                          <div className="flex items-center gap-3">
+                            <span
+                              aria-hidden
+                              className="inline-block h-3 w-7 rounded-sm border"
+                              style={{
+                                background: sw ?? "var(--primary)",
+                                borderColor: "rgba(0,0,0,0.08)",
+                              }}
+                            />
+                            <span className="capitalize">{s}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>

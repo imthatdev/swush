@@ -11,6 +11,29 @@ This project follows [Semantic Versioning](https://iconical.dev/versioning).
 
 ---
 
+## v1.1.0 – URL Safety Hardening 🔐
+
+**Released: February 24, 2026**
+
+### 🛡️ Security
+
+- Added centralized external URL validation to block unsafe/local/private-network targets before outbound HTTP requests.
+- Hardened webhook URL handling (create/update/send) so only validated HTTP(S) destinations are allowed.
+- Hardened remote upload URL intake and execution paths to reject unsafe URLs before download/fetch boundaries.
+- Added additional URL safety checks around metadata fetch and downloader entrypoints to reduce SSRF risk.
+
+### 🔌 API & Client Safety
+
+- Hardened `apiV1()` path normalization to prevent protocol/protocol-relative input from becoming request targets.
+- Added encoded path segment helper usage across component API calls to avoid direct dynamic URL interpolation.
+- Refactored dynamic component API endpoints to safer path/query construction patterns for better static-analysis compliance.
+
+### 🎬 Providers
+
+- Strengthened TMDB request URL construction and ID validation with stricter endpoint building.
+
+---
+
 ## v1.0.10 – Remote Upload Metadata Naming 🔌
 
 **Released: February 23, 2026**

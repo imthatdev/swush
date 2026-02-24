@@ -21,6 +21,7 @@ import { integrationWebhooks } from "@/db/schemas/core-schema";
 import { getCurrentUser } from "@/lib/client/user";
 import { withApiError } from "@/lib/server/api-error";
 import { eq } from "drizzle-orm";
+import { assertSafeExternalHttpUrl } from "@/lib/security/url";
 
 export const GET = withApiError(async function GET() {
   const user = await getCurrentUser();
@@ -58,8 +59,9 @@ export const POST = withApiError(async function POST(req: NextRequest) {
     );
   }
 
+  let safeUrl = "";
   try {
-    new URL(body.url);
+    safeUrl = assertSafeExternalHttpUrl(body.url);
   } catch {
     return NextResponse.json({ message: "Invalid URL" }, { status: 400 });
   }
@@ -73,7 +75,7 @@ export const POST = withApiError(async function POST(req: NextRequest) {
     .values({
       userId: user.id,
       name: body.name.trim(),
-      url: body.url.trim(),
+      url: safeUrl,
       secret: body.secret?.trim() || null,
       format: body.format === "discord" ? "discord" : "json",
       events,

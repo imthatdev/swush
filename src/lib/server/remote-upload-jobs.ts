@@ -29,6 +29,7 @@ import { enqueuePreviewJob, kickPreviewRunner } from "./preview-jobs";
 import { enqueueStreamJob, kickStreamRunner } from "./stream-jobs";
 import { createNotification } from "./notifications";
 import { getUserUploadSettings } from "@/lib/server/upload-settings";
+import { assertSafeExternalHttpUrl } from "@/lib/security/url";
 
 export type RemoteUploadJobStatus =
   | "queued"
@@ -123,7 +124,8 @@ async function runRemoteUploadJob(id: string) {
   await update({ status: "downloading", percent: 0 });
 
   try {
-    const tmp = await downloadWithYtDlp(job.url, "remote", async (p) => {
+    const safeUrl = assertSafeExternalHttpUrl(job.url);
+    const tmp = await downloadWithYtDlp(safeUrl, "remote", async (p) => {
       const percent = Math.max(0, Math.min(80, Math.round((p ?? 0) * 0.8)));
       await update({ percent });
     });

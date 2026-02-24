@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
-import { apiV1 } from "@/lib/api-path";
+import { apiV1, apiV1Path } from "@/lib/api-path";
 import { copyToClipboard } from "@/lib/client/clipboard";
 
 export default function AuditClient() {
@@ -151,7 +151,8 @@ export default function AuditClient() {
   }, [verifySummary]);
 
   async function fetchProof(id: string) {
-    const res = await fetch(apiV1(`/audit/proof/${id}?_t=${Date.now()}`), {
+    const proofPath = apiV1Path("/audit/proof", id);
+    const res = await fetch(`${proofPath}?_t=${Date.now()}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to load proof");
@@ -233,7 +234,8 @@ export default function AuditClient() {
 
   async function runVerify() {
     try {
-      const res = await fetch(apiV1(`/audit/verify?_t=${Date.now()}`), {
+      const verifyPath = apiV1("/audit/verify");
+      const res = await fetch(`${verifyPath}?_t=${Date.now()}`, {
         cache: "no-store",
       });
       if (!res.ok) throw new Error("verify_failed");

@@ -21,6 +21,7 @@ import crypto from "node:crypto";
 import { db } from "@/db/client";
 import { integrationWebhooks } from "@/db/schemas/core-schema";
 import { and, eq } from "drizzle-orm";
+import { assertSafeExternalHttpUrl } from "@/lib/security/url";
 
 export type WebhookEventName =
   | "file.uploaded"
@@ -76,6 +77,24 @@ async function sendWebhook(
   event: WebhookEventName,
   timestamp: string,
 ) {
+  let safeUrl: string;
+  try {
+    safeUrl = assertSafeExternalHttpUrl(hook.url);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : "Invalid webhook URL";
+    await db
+      .update(integrationWebhooks)
+      .set({
+        lastStatus: undefined,
+        lastError: reason,
+        lastDeliveredAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(integrationWebhooks.id, hook.id));
+
+    return { ok: false, lastStatus: null, lastError: reason };
+  }
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "x-swush-event": event,
@@ -90,7 +109,7 @@ async function sendWebhook(
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const res = await fetch(hook.url, {
+      const res = await fetch(safeUrl, {
         method: "POST",
         headers,
         body,

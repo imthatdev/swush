@@ -38,7 +38,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { apiV1 } from "@/lib/api-path";
+import { apiV1, apiV1Path } from "@/lib/api-path";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -426,7 +426,8 @@ export default function GlobalCommand() {
     const ac = new AbortController();
     abortRef.current = ac;
     setLoading(!cached);
-    fetch(apiV1(`/search?q=${encodeURIComponent(query)}`), {
+    const searchPath = apiV1("/search");
+    fetch(`${searchPath}?q=${encodeURIComponent(query)}`, {
       signal: ac.signal,
     })
       .then(async (r) => {
@@ -501,12 +502,17 @@ export default function GlobalCommand() {
     try {
       if (item.type === "file") {
         if (!item.slug) throw new Error("Missing file slug");
-        const res = await fetch(apiV1(`/files/${item.slug}/favorite`), {
+        const res = await fetch(apiV1Path("/files", item.slug, "favorite"), {
           method: "PATCH",
         });
         if (!res.ok) throw new Error("Failed to update favorite");
       } else {
-        const res = await fetch(apiV1(`/${item.type}s/${item.id}`), {
+        const safeType = item.type
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9-]/g, "");
+        if (!safeType) throw new Error("Unsupported item type");
+        const res = await fetch(apiV1Path(`/${safeType}s`, item.id), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isFavorite: nextValue }),

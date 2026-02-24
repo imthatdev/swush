@@ -29,11 +29,11 @@ RUN apk add --no-cache \
     clamav \
     clamav-daemon \
     bash \
- && rm -rf /var/cache/apk/*
+    && rm -rf /var/cache/apk/*
 
 # Just install drizzle-kit (and any runtime peer deps needed to run migrations)
 RUN corepack enable && corepack prepare pnpm@latest --activate \
- && pnpm add --prod drizzle-kit drizzle-orm pg
+    && pnpm add --prod drizzle-kit drizzle-orm pg
 
 # Copy Next.js standalone/server output and static assets from the build stage
 COPY --from=builder /app/.next/standalone ./
@@ -43,6 +43,12 @@ COPY --from=builder /app/public ./public
 # Copy entrypoint script
 COPY docker/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
+
+# Create and use a non-root user for runtime
+RUN addgroup -S swush && adduser -S -G swush swush \
+    && chown -R swush:swush /app
+
+USER swush
 
 EXPOSE 3000
 

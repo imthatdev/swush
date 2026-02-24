@@ -15,15 +15,18 @@
  *   limitations under the License.
  */
 
+import { assertSafeExternalHttpUrl } from "@/lib/security/url";
+
 export async function fetchPageMeta(targetUrl: string): Promise<{
   title?: string | null;
   description?: string | null;
   imageUrl?: string | null;
 }> {
   try {
+    const safeTargetUrl = assertSafeExternalHttpUrl(targetUrl);
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 5000);
-    const res = await fetch(targetUrl, {
+    const res = await fetch(safeTargetUrl, {
       signal: ctrl.signal,
       headers: {
         "User-Agent":
@@ -75,7 +78,7 @@ export async function fetchPageMeta(targetUrl: string): Promise<{
 
     if (imageUrl) {
       try {
-        imageUrl = new URL(imageUrl, targetUrl).toString();
+        imageUrl = new URL(imageUrl, safeTargetUrl).toString();
       } catch {}
     }
 

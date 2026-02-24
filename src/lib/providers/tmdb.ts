@@ -19,6 +19,25 @@ import { getIntegrationSecrets } from "@/lib/server/runtime-settings";
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
+const allowedTypes = ["movie", "tv"] as const;
+
+function parsePositiveInt(value: string, field: string): number {
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`Invalid ${field}`);
+  }
+  const n = Number(value);
+  if (!Number.isSafeInteger(n) || n <= 0) {
+    throw new Error(`Invalid ${field}`);
+  }
+  return n;
+}
+
+function tmdbUrl(pathname: string, apiKey: string) {
+  const url = new URL(`${TMDB_BASE}${pathname}`);
+  url.searchParams.set("api_key", apiKey);
+  return url.toString();
+}
+
 function img(path?: string | null, size: string = "w500") {
   return path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
 }
@@ -40,8 +59,9 @@ export async function tmdbSearchMulti(q: string): Promise<TMDBSearchItem[]> {
   const url = new URL(`${TMDB_BASE}/search/multi`);
   url.searchParams.set("query", q);
   url.searchParams.set("include_adult", "false");
+  url.searchParams.set("api_key", tmdbApiKey);
 
-  const res = await fetch(`${url.toString()}&api_key=${tmdbApiKey}`, {
+  const res = await fetch(url.toString(), {
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`tmdb search failed: ${res.status}`);
@@ -50,7 +70,7 @@ export async function tmdbSearchMulti(q: string): Promise<TMDBSearchItem[]> {
   const items: TMDBSearchItem[] = (json.results || [])
     .filter(
       (r: { media_type: string }) =>
-        r.media_type === "movie" || r.media_type === "tv"
+        r.media_type === "movie" || r.media_type === "tv",
     )
     .map(
       (r: {
@@ -71,15 +91,15 @@ export async function tmdbSearchMulti(q: string): Promise<TMDBSearchItem[]> {
         year: r.release_date
           ? Number((r.release_date as string).slice(0, 4))
           : r.first_air_date
-          ? Number((r.first_air_date as string).slice(0, 4))
-          : null,
+            ? Number((r.first_air_date as string).slice(0, 4))
+            : null,
         poster: img(r.poster_path),
         rating:
           typeof r.vote_average === "number"
             ? Math.round(r.vote_average * 10) / 10
             : null,
         overview: r.overview || null,
-      })
+      }),
     );
 
   return items;
@@ -87,13 +107,22 @@ export async function tmdbSearchMulti(q: string): Promise<TMDBSearchItem[]> {
 
 export async function tmdbGetTitle(type: "movie" | "tv", id: string) {
   const { tmdbApiKey } = await getIntegrationSecrets();
+
   if (!tmdbApiKey) throw new Error("TMDB API key is not set");
-  const res = await fetch(
-    `${TMDB_BASE}/${type}/${id}?api_key=${tmdbApiKey}`,
-    { cache: "no-store" }
-  );
+
+  if (!allowedTypes.includes(type)) {
+    throw new Error("Invalid type");
+  }
+
+  const safeId = parsePositiveInt(id, "id");
+
+  const res = await fetch(tmdbUrl(`/${type}/${safeId}`, tmdbApiKey), {
+    cache: "no-store",
+  });
+
   if (!res.ok) throw new Error(`tmdb get ${type} failed: ${res.status}`);
   const r = await res.json();
+
   return {
     provider: "tmdb" as const,
     mediaType: type,
@@ -102,8 +131,8 @@ export async function tmdbGetTitle(type: "movie" | "tv", id: string) {
     year: r.release_date
       ? Number((r.release_date as string).slice(0, 4))
       : r.first_air_date
-      ? Number((r.first_air_date as string).slice(0, 4))
-      : null,
+        ? Number((r.first_air_date as string).slice(0, 4))
+        : null,
     poster: img(r.poster_path),
     rating:
       typeof r.vote_average === "number"
@@ -123,7 +152,7 @@ export async function tmdbGetTitle(type: "movie" | "tv", id: string) {
               name: s.name,
               episodeCount: s.episode_count,
               poster: img(s.poster_path, "w300"),
-            })
+            }),
           )
         : undefined,
     number_of_seasons: r.number_of_seasons ?? undefined,
@@ -135,13 +164,17 @@ export async function tmdbGetTitle(type: "movie" | "tv", id: string) {
 
 export async function tmdbGetSeasonEpisodes(
   tvId: string,
-  seasonNumber: number
+  seasonNumber: number,
 ) {
   const { tmdbApiKey } = await getIntegrationSecrets();
   if (!tmdbApiKey) throw new Error("TMDB API key is not set");
+  const safeTvId = parsePositiveInt(tvId, "tvId");
+  if (!Number.isSafeInteger(seasonNumber) || seasonNumber <= 0) {
+    throw new Error("Invalid seasonNumber");
+  }
   const res = await fetch(
-    `${TMDB_BASE}/tv/${tvId}/season/${seasonNumber}?api_key=${tmdbApiKey}`,
-    { cache: "no-store" }
+    tmdbUrl(`/tv/${safeTvId}/season/${seasonNumber}`, tmdbApiKey),
+    { cache: "no-store" },
   );
   if (!res.ok) throw new Error(`tmdb get season failed: ${res.status}`);
   const r = await res.json();
@@ -160,6 +193,6 @@ export async function tmdbGetSeasonEpisodes(
       name: e.name,
       still: img(e.still_path, "w300"),
       airDate: e.air_date || null,
-    })
+    }),
   );
 }

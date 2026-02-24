@@ -48,7 +48,7 @@ import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageLayout from "../Common/PageLayout";
 import { shareUrl } from "@/lib/api/helpers";
-import { apiV1 } from "@/lib/api-path";
+import { apiV1, apiV1Path } from "@/lib/api-path";
 import CopyButton from "@/components/Common/CopyButton";
 import ShareQrButton from "@/components/Common/ShareQrButton";
 import { PaginationFooter } from "../Shared/PaginationFooter";
@@ -92,7 +92,8 @@ type Tab = "all" | "movie" | "tv" | "anime";
 
 type ProgressMap = Record<string, { season: number; episode: number }[]>;
 
-const watchlistUrl = (path = "") => apiV1(`/watchlist${path}`);
+const watchlistUrl = (...segments: Array<string | number>) =>
+  apiV1Path("/watchlist", ...segments);
 
 export default function WatchClient({ username }: { username: string }) {
   const watchUrl = (path = "") => apiV1(`/watch${path}`);
@@ -288,7 +289,7 @@ export default function WatchClient({ username }: { username: string }) {
   }
 
   async function remove(id: string) {
-    const res = await fetch(watchlistUrl(`/${id}`), { method: "DELETE" });
+    const res = await fetch(watchlistUrl(id), { method: "DELETE" });
     if (res.ok) {
       setItems((prev) => prev.filter((x) => x.id !== id));
       setTotalCount((prev) => Math.max(0, prev - 1));
@@ -378,7 +379,7 @@ export default function WatchClient({ username }: { username: string }) {
     episode: number,
     checked: boolean,
   ) {
-    const res = await fetch(watchlistUrl(`/${itemId}/progress`), {
+    const res = await fetch(watchlistUrl(itemId, "progress"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ season, episode, watched: checked }),
@@ -427,7 +428,7 @@ export default function WatchClient({ username }: { username: string }) {
     if (selectedIds.length === 0) return;
     const toDelete = [...selectedIds];
     const { ok, fail } = await performBulk(toDelete, async (id) =>
-      fetch(watchlistUrl(`/${id}`), { method: "DELETE" }),
+      fetch(watchlistUrl(id), { method: "DELETE" }),
     );
     setItems((prev) => prev.filter((x) => !toDelete.includes(x.id)));
     if (ok > 0) {
@@ -452,7 +453,7 @@ export default function WatchClient({ username }: { username: string }) {
   }
 
   async function setItemVisibility(id: string, visible: boolean) {
-    const res = await fetch(watchlistUrl(`/${id}`), {
+    const res = await fetch(watchlistUrl(id), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isPublic: visible }),
@@ -474,7 +475,7 @@ export default function WatchClient({ username }: { username: string }) {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
     const reqs = ids.map((id) =>
-      fetch(watchlistUrl(`/${id}`), {
+      fetch(watchlistUrl(id), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isPublic: visible }),
@@ -506,7 +507,7 @@ export default function WatchClient({ username }: { username: string }) {
 
   async function saveNotes() {
     if (!notesItem) return;
-    const res = await fetch(watchlistUrl(`/${notesItem.id}`), {
+    const res = await fetch(watchlistUrl(notesItem.id), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notes: notesText }),
@@ -551,7 +552,7 @@ export default function WatchClient({ username }: { username: string }) {
       const [sStr, eStr] = key.split(":");
       const s = Number(sStr),
         e = Number(eStr);
-      return fetch(watchlistUrl(`/${activeItem.id}/progress`), {
+      return fetch(watchlistUrl(activeItem.id, "progress"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ season: s, episode: e, watched }),

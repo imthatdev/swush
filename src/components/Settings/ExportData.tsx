@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { PaginationFooter } from "@/components/Shared/PaginationFooter";
 import { useCachedPagedList } from "@/hooks/use-cached-paged-list";
-import { apiV1 } from "@/lib/api-path";
+import { apiV1, apiV1Path } from "@/lib/api-path";
 import { toast } from "sonner";
 
 type ExportItem = {
@@ -67,7 +67,8 @@ export default function ExportData() {
     const qs = new URLSearchParams();
     qs.set("limit", String(pageSize));
     qs.set("offset", String((page - 1) * pageSize));
-    const res = await fetch(apiV1(`/profile/export?${qs.toString()}`), {
+    const exportListPath = apiV1("/profile/export");
+    const res = await fetch(`${exportListPath}?${qs.toString()}`, {
       cache: "no-store",
       credentials: "include",
     });
@@ -192,7 +193,7 @@ export default function ExportData() {
   const deleteArchive = async (id: string) => {
     setDeletingId(id);
     try {
-      const res = await fetch(apiV1(`/profile/export/${id}`), {
+      const res = await fetch(apiV1Path("/profile/export", id), {
         method: "DELETE",
       });
       if (!res.ok) {

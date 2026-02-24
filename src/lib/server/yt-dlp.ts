@@ -20,6 +20,7 @@ import { tmpdir } from "os";
 import path from "path";
 import { nanoid } from "nanoid";
 import { readdir, stat } from "fs/promises";
+import { assertSafeExternalHttpUrl } from "@/lib/security/url";
 
 export class YtDlpNotFoundError extends Error {
   constructor(message?: string) {
@@ -55,6 +56,8 @@ export async function downloadWithYtDlp(
   prefix = "yt",
   onProgress?: (percent?: number) => void,
 ): Promise<YtDlpResult> {
+  const safeUrl = assertSafeExternalHttpUrl(url);
+
   if (!checkYtDlpAvailable()) {
     throw new YtDlpNotFoundError(
       "yt-dlp is not installed or not available in PATH. Install it with `pip install yt-dlp` or `brew install yt-dlp` and ensure it is on PATH.",
@@ -80,10 +83,10 @@ export async function downloadWithYtDlp(
     ];
 
     const cookiesPath = process.env.COOKIES_PATH;
-    if (cookiesPath && /twitter\.com|x\.com/.test(url)) {
+    if (cookiesPath && /twitter\.com|x\.com/.test(safeUrl)) {
       args.push("--cookies", cookiesPath);
     }
-    args.push(url);
+    args.push(safeUrl);
     const proc = spawn(getYtDlpBinary(), args, {
       stdio: ["ignore", "pipe", "pipe"],
     });

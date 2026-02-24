@@ -21,6 +21,7 @@ import { integrationWebhooks } from "@/db/schemas/core-schema";
 import { getCurrentUser } from "@/lib/client/user";
 import { withApiError } from "@/lib/server/api-error";
 import { and, eq } from "drizzle-orm";
+import { assertSafeExternalHttpUrl } from "@/lib/security/url";
 
 export const PATCH = withApiError(async function PATCH(
   req: NextRequest,
@@ -45,8 +46,7 @@ export const PATCH = withApiError(async function PATCH(
   if (typeof body?.name === "string") updates.name = body.name.trim();
   if (typeof body?.url === "string") {
     try {
-      new URL(body.url);
-      updates.url = body.url.trim();
+      updates.url = assertSafeExternalHttpUrl(body.url);
     } catch {
       return NextResponse.json({ message: "Invalid URL" }, { status: 400 });
     }

@@ -17,11 +17,47 @@
 
 export const API_V1_BASE = "/api/v1";
 
+function normalizeApiPath(path: string) {
+  const raw = path.trim();
+  if (!raw) return "";
+
+  if (/^[a-z][a-z\d+\-.]*:/i.test(raw) || raw.startsWith("//")) {
+    return "";
+  }
+
+  if (raw.startsWith(API_V1_BASE)) {
+    const rest = raw.slice(API_V1_BASE.length);
+    if (!rest) return "";
+    return rest.startsWith("/") ? rest : `/${rest}`;
+  }
+
+  return raw.startsWith("/") ? raw : `/${raw}`;
+}
+
 export function apiV1(path: string) {
-  if (!path) return API_V1_BASE;
-  return path.startsWith("/")
-    ? `${API_V1_BASE}${path}`
-    : `${API_V1_BASE}/${path}`;
+  const normalized = normalizeApiPath(path);
+  return normalized ? `${API_V1_BASE}${normalized}` : API_V1_BASE;
+}
+
+function encodeApiSegment(value: string | number) {
+  return encodeURIComponent(String(value));
+}
+
+export function apiV1Path(
+  path: string,
+  ...segments: Array<string | number | null | undefined>
+) {
+  const normalized = normalizeApiPath(path);
+  const stripped = normalized.replace(/\/+$/, "");
+  const base = stripped ? `${API_V1_BASE}${stripped}` : API_V1_BASE;
+  const encoded = segments
+    .filter(
+      (segment): segment is string | number =>
+        segment !== null && segment !== undefined,
+    )
+    .map((segment) => encodeApiSegment(segment))
+    .filter(Boolean);
+  return encoded.length ? `${base}/${encoded.join("/")}` : base;
 }
 
 export function apiV1Absolute(base: string | null | undefined, path: string) {

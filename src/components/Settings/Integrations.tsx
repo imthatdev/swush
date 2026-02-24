@@ -19,7 +19,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { apiV1 } from "@/lib/api-path";
+import { apiV1, apiV1Path } from "@/lib/api-path";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -160,7 +160,7 @@ export function Integrations() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(apiV1(`/integrations/webhooks/${id}`), {
+      const res = await fetch(apiV1Path("/integrations/webhooks", id), {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete webhook");
@@ -175,7 +175,7 @@ export function Integrations() {
 
   const handleTest = async (id: string) => {
     try {
-      const res = await fetch(apiV1(`/integrations/webhooks/${id}/test`), {
+      const res = await fetch(apiV1Path("/integrations/webhooks", id, "test"), {
         method: "POST",
       });
       if (!res.ok) throw new Error("Test failed");
@@ -190,7 +190,7 @@ export function Integrations() {
 
   const handleToggle = async (id: string, enabled: boolean) => {
     try {
-      const res = await fetch(apiV1(`/integrations/webhooks/${id}`), {
+      const res = await fetch(apiV1Path("/integrations/webhooks", id), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled }),
