@@ -20,6 +20,9 @@ RUN pnpm build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
+# Create non-root user/group early so COPY can set ownership without a large chown layer
+RUN addgroup -S swush && adduser -S -G swush swush
+
 # Install runtime deps
 RUN apk add --no-cache \
     ffmpeg \
@@ -36,17 +39,15 @@ RUN corepack enable && corepack prepare pnpm@latest --activate \
     && pnpm add --prod drizzle-kit drizzle-orm pg
 
 # Copy Next.js standalone/server output and static assets from the build stage
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+COPY --chown=swush:swush --from=builder /app/.next/standalone ./
+COPY --chown=swush:swush --from=builder /app/.next/static ./.next/static
+COPY --chown=swush:swush --from=builder /app/public ./public
 
 # Copy entrypoint script
-COPY docker/entrypoint.sh ./entrypoint.sh
+COPY --chown=swush:swush docker/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
-# Create and use a non-root user for runtime
-RUN addgroup -S swush && adduser -S -G swush swush \
-    && chown -R swush:swush /app
+# Use non-root user for runtime
 
 USER swush
 
