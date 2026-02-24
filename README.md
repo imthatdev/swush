@@ -1,5 +1,7 @@
 # Swush
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/27a0480b6a7a4f298ebb34383a3e4c5b)](https://app.codacy.com/gh/imthatdev/swush?utm_source=github.com&utm_medium=referral&utm_content=imthatdev/swush&utm_campaign=Badge_Grade)
+
 Swush is a secure, self-hosted full‑stack file manager and personal dashboard built with Next.js, TypeScript, TailwindCSS, and Better Auth. It offers a unified platform to manage your files, short links, upload requests, watchlist (anime, movies, TV shows), and more; all with privacy and control in mind.
 
 
