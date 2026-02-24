@@ -19,6 +19,8 @@ import { assertSafeExternalHttpUrl } from "@/lib/security/url";
 
 const INTERNAL_BASE = "http://swush.internal";
 const INTERNAL_API_PREFIX = "/api/v1";
+const INTERNAL_API_ALLOWLIST = [INTERNAL_API_PREFIX];
+const SAME_ORIGIN_PROTOCOL_ALLOWLIST = ["http:", "https:"];
 
 function assertNoTraversal(pathname: string) {
   const segments = pathname.split("/").filter(Boolean);
@@ -50,7 +52,14 @@ export function assertSafeInternalApiUrl(rawUrl: string): string {
 }
 
 export function fetchSafeInternalApi(input: string, init?: RequestInit) {
-  return fetch(assertSafeInternalApiUrl(input), init);
+  const safeUrl = assertSafeInternalApiUrl(input);
+  const isAllowed = INTERNAL_API_ALLOWLIST.some(
+    (prefix) => safeUrl === prefix || safeUrl.startsWith(`${prefix}/`),
+  );
+  if (!isAllowed) {
+    throw new Error("Internal API URL is not in allowlist");
+  }
+  return fetch(safeUrl, init);
 }
 
 export function assertSafeSameOriginHttpUrl(
@@ -74,12 +83,24 @@ export function fetchSafeSameOrigin(input: string, init?: RequestInit) {
   if (typeof window === "undefined") {
     throw new Error("Same-origin fetch is only available in browser context");
   }
-  return fetch(
-    assertSafeSameOriginHttpUrl(input, window.location.origin),
-    init,
-  );
+  const safeUrl = assertSafeSameOriginHttpUrl(input, window.location.origin);
+  const parsed = new URL(safeUrl);
+  const sameOriginAllowlist = [window.location.origin];
+  if (!sameOriginAllowlist.includes(parsed.origin)) {
+    throw new Error("Cross-origin URL is not in allowlist");
+  }
+  if (!SAME_ORIGIN_PROTOCOL_ALLOWLIST.includes(parsed.protocol)) {
+    throw new Error("URL protocol must be http or https");
+  }
+  return fetch(parsed.toString(), init);
 }
 
 export function fetchSafeExternalHttp(input: string, init?: RequestInit) {
-  return fetch(assertSafeExternalHttpUrl(input), init);
+  const safeUrl = assertSafeExternalHttpUrl(input);
+  const parsed = new URL(safeUrl);
+  const allowedProtocols = ["http:", "https:"];
+  if (!allowedProtocols.includes(parsed.protocol)) {
+    throw new Error("External URL protocol is not in allowlist");
+  }
+  return fetch(parsed.toString(), init);
 }
