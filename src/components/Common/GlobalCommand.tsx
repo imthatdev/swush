@@ -39,6 +39,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { apiV1, apiV1Path } from "@/lib/api-path";
+import { fetchSafeInternalApi } from "@/lib/security/http-client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -427,7 +428,7 @@ export default function GlobalCommand() {
     abortRef.current = ac;
     setLoading(!cached);
     const searchPath = apiV1("/search");
-    fetch(`${searchPath}?q=${encodeURIComponent(query)}`, {
+    fetchSafeInternalApi(`${searchPath}?q=${encodeURIComponent(query)}`, {
       signal: ac.signal,
     })
       .then(async (r) => {
@@ -496,29 +497,36 @@ export default function GlobalCommand() {
 
   const toggleFavorite = async (item: SearchItem) => {
     const nextValue = !getIsFavorite(item);
+    const updateFavorite = async () => {
+      if (item.type === "file") {
+        if (!item.slug) throw new Error("Missing file slug");
+        return fetchSafeInternalApi(
+          apiV1Path("/files", item.slug, "favorite"),
+          {
+            method: "PATCH",
+          },
+        );
+      }
+
+      const safeType = item.type
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, "");
+      if (!safeType) throw new Error("Unsupported item type");
+
+      return fetchSafeInternalApi(apiV1Path(`/${safeType}s`, item.id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isFavorite: nextValue }),
+      });
+    };
+
     const key = `${item.type}:${item.id}`;
     setActionLoading((prev) => ({ ...prev, [`fav:${key}`]: true }));
     setFavoriteOverrides((prev) => ({ ...prev, [key]: nextValue }));
     try {
-      if (item.type === "file") {
-        if (!item.slug) throw new Error("Missing file slug");
-        const res = await fetch(apiV1Path("/files", item.slug, "favorite"), {
-          method: "PATCH",
-        });
-        if (!res.ok) throw new Error("Failed to update favorite");
-      } else {
-        const safeType = item.type
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9-]/g, "");
-        if (!safeType) throw new Error("Unsupported item type");
-        const res = await fetch(apiV1Path(`/${safeType}s`, item.id), {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isFavorite: nextValue }),
-        });
-        if (!res.ok) throw new Error("Failed to update favorite");
-      }
+      const res = await updateFavorite();
+      if (!res.ok) throw new Error("Failed to update favorite");
     } catch {
       setFavoriteOverrides((prev) => ({ ...prev, [key]: !nextValue }));
       toast.error("Failed to update favorite");
@@ -557,9 +565,21 @@ export default function GlobalCommand() {
   const toggleTypeFilter = (type: string) => {
     if (typeTokens.length) {
       const token = `type:${type}`;
-      const regex = new RegExp(`\\btype:${type}s?\\b`, "i");
-      const next = regex.test(q)
-        ? q.replace(regex, " ").replace(/\s+/g, " ").trim()
+      const lowerToken = token.toLowerCase();
+      const lowerPluralToken = `${token}s`.toLowerCase();
+      const words = q.split(/\s+/).filter(Boolean);
+      const hasToken = words.some((word) => {
+        const lowerWord = word.toLowerCase();
+        return lowerWord === lowerToken || lowerWord === lowerPluralToken;
+      });
+      const next = hasToken
+        ? words
+            .filter((word) => {
+              const lowerWord = word.toLowerCase();
+              return lowerWord !== lowerToken && lowerWord !== lowerPluralToken;
+            })
+            .join(" ")
+            .trim()
         : `${q} ${token}`.trim();
       setQ(next);
       return;

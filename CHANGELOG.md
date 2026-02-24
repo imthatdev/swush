@@ -11,6 +11,35 @@ This project follows [Semantic Versioning](https://iconical.dev/versioning).
 
 ---
 
+## v1.1.1 – URL Safety Patch 🔐
+
+**Released: February 25, 2026**
+
+### 🛡️ Security
+
+- Fixed edge-case URL validation gaps so all external URLs are consistently sanitized before outbound requests.
+- Added centralized safe HTTP wrappers for:
+	- internal API routes,
+	- same-origin browser fetches,
+	- externally validated HTTP(S) requests.
+- Updated multiple client/server request paths to use these safe wrappers for stronger static-analysis compliance.
+- Hardened AES-GCM decryption paths by enforcing explicit auth tag length checks.
+- Replaced dynamic regex and unsafe HTML assignment patterns in critical paths with safer parsing/DOM handling.
+
+### 🗂️ Filesystem Safety
+
+- Standardized traversal-safe path resolution and normalization across upload/export/preview/stream/storage flows.
+- Added shared reusable path helper logic to remove duplicated path-guard implementations.
+
+### 🧹 Maintainability
+
+- Reduced duplicated logic in bulk update flows and metadata parsing helpers.
+- Refactored language registration/detection internals to lower complexity and improve readability.
+- Consolidated repeated security/path handling patterns into reusable utilities.
+
+
+---
+
 ## v1.1.0 – URL Safety Hardening 🔐
 
 **Released: February 24, 2026**

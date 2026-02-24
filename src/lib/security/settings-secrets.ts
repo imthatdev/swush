@@ -29,7 +29,7 @@ function getSecretKey() {
   const buf = Buffer.from(raw, "base64");
   if (buf.length !== 32) {
     throw new Error(
-      `${SECRET_ENV} must be 32 bytes (base64-encoded for AES-256-GCM).`
+      `${SECRET_ENV} must be 32 bytes (base64-encoded for AES-256-GCM).`,
     );
   }
   return buf;
@@ -39,7 +39,10 @@ export function encryptSettingsSecret(value: string) {
   const key = getSecretKey();
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
-  const encrypted = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
+  const encrypted = Buffer.concat([
+    cipher.update(value, "utf8"),
+    cipher.final(),
+  ]);
   const tag = cipher.getAuthTag();
   return {
     encrypted: encrypted.toString("base64"),
@@ -56,7 +59,12 @@ export function decryptSettingsSecret(payload: {
   const key = getSecretKey();
   const iv = Buffer.from(payload.iv, "base64");
   const tag = Buffer.from(payload.tag, "base64");
-  const decipher = createDecipheriv("aes-256-gcm", key, iv);
+  if (tag.length !== 16) {
+    throw new Error("Invalid authentication tag length");
+  }
+  const decipher = createDecipheriv("aes-256-gcm", key, iv, {
+    authTagLength: 16,
+  });
   decipher.setAuthTag(tag);
   const decrypted = Buffer.concat([
     decipher.update(Buffer.from(payload.encrypted, "base64")),

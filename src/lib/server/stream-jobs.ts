@@ -39,6 +39,13 @@ import {
   streamAssetStoredName,
   streamPlaylistName,
 } from "@/lib/server/stream-paths";
+import { resolveWithin } from "@/lib/security/path";
+
+function safeFileExt(name: string) {
+  const ext = path.extname(name).toLowerCase();
+  if (/^\.[a-z0-9]{1,16}$/i.test(ext)) return ext;
+  return ".bin";
+}
 
 export type StreamJobStatus = "queued" | "processing" | "ready" | "failed";
 
@@ -98,7 +105,10 @@ function resolveStreamJobLimits(requestedLimit?: number) {
   const envConcurrency = readPositiveInt(process.env.STREAM_JOBS_CONCURRENCY);
   const queueCap = Math.min(envQueue ?? defaultQueue, hardMax);
   const queueLimit = Math.min(requested, queueCap);
-  const concurrency = Math.min(queueLimit, envConcurrency ?? defaultConcurrency);
+  const concurrency = Math.min(
+    queueLimit,
+    envConcurrency ?? defaultConcurrency,
+  );
 
   return { queueLimit, concurrency };
 }
@@ -130,8 +140,8 @@ async function runFfmpegHls(params: {
       ? Math.floor(segmentSeconds)
       : 2;
 
-  const segmentPattern = path.join(params.outputDir, "segment-%05d.ts");
-  const playlistPath = path.join(params.outputDir, streamPlaylistName());
+  const segmentPattern = resolveWithin(params.outputDir, "segment-%05d.ts");
+  const playlistPath = resolveWithin(params.outputDir, streamPlaylistName());
 
   const args: string[] = ["-y", "-i", params.inputPath];
 
@@ -227,7 +237,7 @@ async function uploadHlsOutput(params: {
 
   for (const entry of entries) {
     if (!entry.isFile()) continue;
-    const filePath = path.join(params.outputDir, entry.name);
+    const filePath = resolveWithin(params.outputDir, entry.name);
     const [stats, buffer] = await Promise.all([
       stat(filePath),
       readFile(filePath),
@@ -255,10 +265,12 @@ async function generateHls(params: {
   mimeType: string;
   quality: number;
 }) {
-  const tmpDir = await mkdtemp(path.join(os.tmpdir(), "swush-hls-"));
-  const inputExt = path.extname(params.storedName) || ".bin";
-  const inputPath = path.join(tmpDir, `in-${Date.now()}${inputExt}`);
-  const outputDir = path.join(tmpDir, "out");
+  const tmpDir = await mkdtemp(
+    `${path.resolve(os.tmpdir())}${path.sep}swush-hls-`,
+  );
+  const inputExt = safeFileExt(params.storedName);
+  const inputPath = resolveWithin(tmpDir, `in-${Date.now()}${inputExt}`);
+  const outputDir = resolveWithin(tmpDir, "out");
   await mkdir(outputDir, { recursive: true });
 
   try {
@@ -303,7 +315,10 @@ export async function enqueueStreamJob(input: StreamJobInput) {
     .select({ id: streamJobs.id, status: streamJobs.status })
     .from(streamJobs)
     .where(
-      and(eq(streamJobs.userId, input.userId), eq(streamJobs.fileId, input.fileId)),
+      and(
+        eq(streamJobs.userId, input.userId),
+        eq(streamJobs.fileId, input.fileId),
+      ),
     )
     .orderBy(desc(streamJobs.createdAt))
     .limit(1);

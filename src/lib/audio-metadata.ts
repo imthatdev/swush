@@ -17,6 +17,7 @@
 
 import type { AudioTrackMeta } from "@/types/player";
 import { apiV1 } from "@/lib/api-path";
+import { fetchSafeInternalApi } from "@/lib/security/http-client";
 
 async function computeGradient(dataUrl: string) {
   if (typeof window === "undefined") return null;
@@ -77,7 +78,7 @@ export async function loadAudioTrackMeta(
         query ? `?${query}` : ""
       }`,
     );
-    const res = await fetch(url, {
+    const res = await fetchSafeInternalApi(url, {
       signal,
       credentials: "include",
       cache: "no-store",

@@ -32,6 +32,7 @@ import {
 import { PaginationFooter } from "@/components/Shared/PaginationFooter";
 import { useCachedPagedList } from "@/hooks/use-cached-paged-list";
 import { apiV1, apiV1Path } from "@/lib/api-path";
+import { fetchSafeInternalApi } from "@/lib/security/http-client";
 import { toast } from "sonner";
 
 type ExportItem = {
@@ -68,10 +69,13 @@ export default function ExportData() {
     qs.set("limit", String(pageSize));
     qs.set("offset", String((page - 1) * pageSize));
     const exportListPath = apiV1("/profile/export");
-    const res = await fetch(`${exportListPath}?${qs.toString()}`, {
-      cache: "no-store",
-      credentials: "include",
-    });
+    const res = await fetchSafeInternalApi(
+      `${exportListPath}?${qs.toString()}`,
+      {
+        cache: "no-store",
+        credentials: "include",
+      },
+    );
     if (!res.ok) return null;
     const data = (await res.json()) as { items?: ExportItem[]; total?: number };
     return {
@@ -124,7 +128,7 @@ export default function ExportData() {
 
     setCreating(true);
     try {
-      const res = await fetch(apiV1("/profile/export"), {
+      const res = await fetchSafeInternalApi(apiV1("/profile/export"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -149,9 +153,12 @@ export default function ExportData() {
   const clearFailed = async () => {
     setClearingFailed(true);
     try {
-      const res = await fetch(apiV1("/profile/export?scope=failed"), {
-        method: "DELETE",
-      });
+      const res = await fetchSafeInternalApi(
+        apiV1("/profile/export?scope=failed"),
+        {
+          method: "DELETE",
+        },
+      );
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error || "Failed to clear exports");
@@ -171,9 +178,12 @@ export default function ExportData() {
   const deleteAllArchives = async () => {
     setDeletingAll(true);
     try {
-      const res = await fetch(apiV1("/profile/export?scope=all"), {
-        method: "DELETE",
-      });
+      const res = await fetchSafeInternalApi(
+        apiV1("/profile/export?scope=all"),
+        {
+          method: "DELETE",
+        },
+      );
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error || "Failed to delete archives");
@@ -193,7 +203,7 @@ export default function ExportData() {
   const deleteArchive = async (id: string) => {
     setDeletingId(id);
     try {
-      const res = await fetch(apiV1Path("/profile/export", id), {
+      const res = await fetchSafeInternalApi(apiV1Path("/profile/export", id), {
         method: "DELETE",
       });
       if (!res.ok) {

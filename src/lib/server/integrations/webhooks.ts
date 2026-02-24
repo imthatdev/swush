@@ -22,6 +22,7 @@ import { db } from "@/db/client";
 import { integrationWebhooks } from "@/db/schemas/core-schema";
 import { and, eq } from "drizzle-orm";
 import { assertSafeExternalHttpUrl } from "@/lib/security/url";
+import { fetchSafeExternalHttp } from "@/lib/security/http-client";
 
 export type WebhookEventName =
   | "file.uploaded"
@@ -109,7 +110,7 @@ async function sendWebhook(
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const res = await fetch(safeUrl, {
+      const res = await fetchSafeExternalHttp(safeUrl, {
         method: "POST",
         headers,
         body,

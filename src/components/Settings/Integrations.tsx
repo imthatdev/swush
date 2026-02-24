@@ -19,7 +19,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { apiV1, apiV1Path } from "@/lib/api-path";
+import { apiV1 } from "@/lib/api-path";
+import { fetchSafeInternalApi } from "@/lib/security/http-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -92,7 +93,7 @@ export function Integrations() {
   const fetchWebhooks = async () => {
     setLoading(true);
     try {
-      const res = await fetch(apiV1("/integrations/webhooks"), {
+      const res = await fetchSafeInternalApi(apiV1("/integrations/webhooks"), {
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Failed to load webhooks");
@@ -128,7 +129,7 @@ export function Integrations() {
     }
     setCreating(true);
     try {
-      const res = await fetch(apiV1("/integrations/webhooks"), {
+      const res = await fetchSafeInternalApi(apiV1("/integrations/webhooks"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -160,9 +161,13 @@ export function Integrations() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(apiV1Path("/integrations/webhooks", id), {
-        method: "DELETE",
-      });
+      const safeId = encodeURIComponent(id);
+      const res = await fetchSafeInternalApi(
+        apiV1(`/integrations/webhooks/${safeId}`),
+        {
+          method: "DELETE",
+        },
+      );
       if (!res.ok) throw new Error("Failed to delete webhook");
       setWebhooks((prev) => prev.filter((w) => w.id !== id));
       toast.success("Webhook deleted");
@@ -175,9 +180,13 @@ export function Integrations() {
 
   const handleTest = async (id: string) => {
     try {
-      const res = await fetch(apiV1Path("/integrations/webhooks", id, "test"), {
-        method: "POST",
-      });
+      const safeId = encodeURIComponent(id);
+      const res = await fetchSafeInternalApi(
+        apiV1(`/integrations/webhooks/${safeId}/test`),
+        {
+          method: "POST",
+        },
+      );
       if (!res.ok) throw new Error("Test failed");
       toast.success("Test sent");
       await fetchWebhooks();
@@ -190,11 +199,15 @@ export function Integrations() {
 
   const handleToggle = async (id: string, enabled: boolean) => {
     try {
-      const res = await fetch(apiV1Path("/integrations/webhooks", id), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled }),
-      });
+      const safeId = encodeURIComponent(id);
+      const res = await fetchSafeInternalApi(
+        apiV1(`/integrations/webhooks/${safeId}`),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled }),
+        },
+      );
       if (!res.ok) throw new Error("Update failed");
       setWebhooks((prev) =>
         prev.map((w) => (w.id === id ? { ...w, enabled } : w)),
