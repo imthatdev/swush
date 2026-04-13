@@ -770,7 +770,7 @@ export async function adminClearUserData(
       await db
         .delete(apiKeySecrets)
         .where(eq(apiKeySecrets.userId, targetUserId));
-      await db.delete(apikey).where(eq(apikey.userId, targetUserId));
+      await db.delete(apikey).where(eq(apikey.referenceId, targetUserId));
     } catch (e) {
       throw new APIError("INTERNAL_SERVER_ERROR", {
         message: "Failed to clear API tokens",

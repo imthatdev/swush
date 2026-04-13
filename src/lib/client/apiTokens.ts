@@ -136,7 +136,7 @@ export const createApiKeyForUser = async ({
   const existing = await db
     .select({ id: apikey.id })
     .from(apikey)
-    .where(eq(apikey.userId, userId));
+    .where(eq(apikey.referenceId, userId));
   if (existing.length >= MAX_KEYS) {
     throw new Error(
       `API key limit reached (${MAX_KEYS}). Revoke existing keys to create new ones.`,
@@ -218,7 +218,7 @@ export const clearExpiredApiKeys = async () => {
     const existing = await db
       .select({ id: apikey.id })
       .from(apikey)
-      .where(eq(apikey.userId, user.id));
+      .where(eq(apikey.referenceId, user.id));
     const ids = existing.map((row) => row.id);
     if (ids.length === 0) {
       await db.delete(apiKeySecrets).where(eq(apiKeySecrets.userId, user.id));

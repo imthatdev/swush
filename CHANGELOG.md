@@ -11,6 +11,17 @@ This project follows [Semantic Versioning](https://iconical.dev/versioning).
 
 ---
 
+v1.2.1 – API Key Ownership Fix 🔑
+
+Released: April 13, 2026
+
+### 🔐 Authentication & API Keys
+- Fixed API key creation failures caused by a schema mismatch between Better Auth API key ownership fields and local database constraints.
+- Updated API key ownership lookups/cleanup paths to use `reference_id` semantics consistently.
+- Added a migration to relax the legacy `apikey.user_id` NOT NULL constraint for compatibility with current Better Auth API key inserts.
+
+---
+
 v1.2.0 – Runtime & Queue Intelligence ⚙️
 
 Released: April 12, 2026
