@@ -19,6 +19,7 @@ import { db } from "@/db/client";
 import { shortLinks } from "@/db/schemas/core-schema";
 import { eq } from "drizzle-orm";
 import { redirect, notFound } from "next/navigation";
+import { headers } from "next/headers";
 import type { Metadata, Viewport } from "next";
 import {
   Card,
@@ -35,6 +36,7 @@ import { getDefaultMetadata } from "@/lib/head";
 import ExternalLayout from "@/components/Common/ExternalLayout";
 import { getPublicRuntimeSettings } from "@/lib/server/runtime-settings";
 import { verifyPasswordHash } from "@/lib/api/password";
+import { shareUrl } from "@/lib/api/helpers";
 import { handleShortLinkMaxViews } from "@/lib/server/max-views";
 import { enforceAnonymousShareAge } from "@/lib/server/anonymous-share";
 import {
@@ -44,6 +46,7 @@ import {
   getUsernameByUserId,
   resolveEmbedViewport,
 } from "@/lib/server/embed-settings";
+import { recordShortLinkVisit } from "@/lib/server/shortlink-analytics";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +63,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const { anon } = await searchParams;
   const isAnonymous = ["1", "true", "yes"].includes((anon ?? "").toLowerCase());
-  const { appName, appUrl } = await getPublicRuntimeSettings();
+  const { appName, appUrl, sharingDomain } = await getPublicRuntimeSettings();
   const defaultMetadata = await getDefaultMetadata();
 
   const link = await db.query.shortLinks.findFirst({
@@ -78,7 +81,7 @@ export async function generateMetadata({
       ...(siteName ? { siteName } : {}),
       title: `${appName} • ${slug}`,
       description: `Redirects to something special for ${slug}`,
-      url: `${appUrl}/s/${slug}`,
+      url: shareUrl("s", slug, { appUrl, sharingDomain }),
     },
     twitter: {
       ...(defaultMetadata.twitter ?? {}),
@@ -263,6 +266,18 @@ export default async function ShortLinkPage({
 
   if (updated) {
     await handleShortLinkMaxViews(updated);
+  }
+
+  const trackedLink = updated ?? link;
+  if (trackedLink?.id && trackedLink?.userId && trackedLink?.slug) {
+    const reqHeaders = await headers();
+    await recordShortLinkVisit({
+      shortLinkId: trackedLink.id,
+      userId: trackedLink.userId,
+      slug: trackedLink.slug,
+      destinationUrl: trackedLink.originalUrl,
+      headers: reqHeaders,
+    });
   }
 
   redirect(updated?.originalUrl ?? link.originalUrl);

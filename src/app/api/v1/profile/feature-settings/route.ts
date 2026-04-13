@@ -26,11 +26,16 @@ import { db } from "@/db/client";
 import { userInfo } from "@/db/schemas/core-schema";
 import { eq } from "drizzle-orm";
 
-const FEATURE_KEYS = ["files", "shortlinks", "watchlist"] as const;
+const FEATURE_KEYS = ["bookmarks", "files", "shortlinks", "watchlist"] as const;
 
 type FeatureKey = (typeof FEATURE_KEYS)[number];
 
-const PREFERENCE_KEYS = ["files", "shortlinks", "watchlist"] as const;
+const PREFERENCE_KEYS = [
+  "bookmarks",
+  "files",
+  "shortlinks",
+  "watchlist",
+] as const;
 
 type PreferenceKey = (typeof PREFERENCE_KEYS)[number];
 
@@ -38,18 +43,21 @@ const preferenceMap: Record<
   PreferenceKey,
   keyof Awaited<ReturnType<typeof getUserPreferences>>
 > = {
+  bookmarks: "featureBookmarksEnabled",
   files: "featureFilesEnabled",
   shortlinks: "featureShortlinksEnabled",
   watchlist: "featureWatchlistEnabled",
 };
 
 type AllowInfo = {
+  allowBookmarks: boolean | null;
   allowFiles: boolean | null;
   allowShortlinks: boolean | null;
   allowWatchlist: boolean | null;
 };
 
 const allowMap: Record<FeatureKey, keyof AllowInfo> = {
+  bookmarks: "allowBookmarks",
   files: "allowFiles",
   shortlinks: "allowShortlinks",
   watchlist: "allowWatchlist",
@@ -63,8 +71,10 @@ export const GET = withApiError(async function GET() {
   const prefs = await getUserPreferences(user.id);
   const [info] = (await db
     .select({
+      allowBookmarks: userInfo.allowBookmarks,
       allowFiles: userInfo.allowFiles,
       allowShortlinks: userInfo.allowShortlinks,
+      allowWatchlist: userInfo.allowWatchlist,
     })
     .from(userInfo)
     .where(eq(userInfo.userId, user.id))
@@ -100,8 +110,10 @@ export const PATCH = withApiError(async function PATCH(req: NextRequest) {
 
   const [info] = (await db
     .select({
+      allowBookmarks: userInfo.allowBookmarks,
       allowFiles: userInfo.allowFiles,
       allowShortlinks: userInfo.allowShortlinks,
+      allowWatchlist: userInfo.allowWatchlist,
     })
     .from(userInfo)
     .where(eq(userInfo.userId, user.id))

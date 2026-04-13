@@ -25,6 +25,7 @@ import { runMediaJobs } from "@/lib/server/media-jobs";
 import { runPreviewJobs } from "@/lib/server/preview-jobs";
 import { runStreamJobs } from "@/lib/server/stream-jobs";
 import { runStorageCleanupJobs } from "@/lib/server/storage-cleanup-jobs";
+import { removeInactivePushSubscriptions } from "@/lib/server/push";
 
 export async function runMediaOptimizationJob(limit = 3) {
   const count = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 10) : 3;
@@ -36,14 +37,22 @@ export async function runPreviewGenerationJob(limit = 3) {
   return runPreviewJobs(count);
 }
 
-export async function runStreamGenerationJob(limit = 1) {
-  const count = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 1;
+export async function runStreamGenerationJob(limit = 3) {
+  const count = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 3;
   return runStreamJobs(count);
 }
 
 export async function runStorageCleanupJob(limit = 3) {
   const count = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 10) : 3;
   return runStorageCleanupJobs(count);
+}
+
+export async function runPushSubscriptionCleanupJob(inactiveDays = 30) {
+  const days =
+    Number.isFinite(inactiveDays) && inactiveDays > 0
+      ? Math.floor(inactiveDays)
+      : 30;
+  return removeInactivePushSubscriptions({ inactiveDays: days });
 }
 
 export async function syncAnilistForUser(userId: string) {

@@ -18,12 +18,14 @@
 import "server-only";
 
 import { NextResponse } from "next/server";
+import { performance } from "perf_hooks";
 import {
   SwushError,
   type SwushErrorPayload,
   type SwushErrorOptions,
   toSwushError,
 } from "@/lib/errors/swush-error";
+import { recordApiLatencySample } from "@/lib/server/runtime-signals";
 
 export type SwushApiErrorBody = {
   error: string;
@@ -66,10 +68,13 @@ export function withApiError<Args extends unknown[]>(
   handler: (...args: Args) => Promise<Response>,
 ) {
   return (async (...args: Args) => {
+    const startedAt = performance.now();
     try {
       return await handler(...args);
     } catch (err) {
       return apiErrorResponse(err);
+    } finally {
+      recordApiLatencySample(performance.now() - startedAt);
     }
   }) as (...args: Args) => Promise<Response>;
 }

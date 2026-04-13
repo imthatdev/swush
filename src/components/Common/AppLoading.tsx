@@ -17,20 +17,40 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import { LogoIcon } from "@/components/Common/Logo";
 import { cn } from "@/lib/utils";
 
 export default function AppLoading({
   label = "Loading…",
   className,
+  showDelayMs = 120,
 }: {
   label?: string;
   className?: string;
+  showDelayMs?: number;
 }) {
+  const [visible, setVisible] = useState(showDelayMs <= 0);
+
+  useEffect(() => {
+    if (showDelayMs <= 0) {
+      setVisible(true);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setVisible(true);
+    }, showDelayMs);
+
+    return () => clearTimeout(timer);
+  }, [showDelayMs]);
+
+  if (!visible) return null;
+
   return (
     <div
       className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm",
+        "fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-150",
         className,
       )}
     >

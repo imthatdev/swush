@@ -36,7 +36,7 @@ export const listedApiKeys = async () => {
   const data = await auth.api.listApiKeys({
     headers: await headers(),
   });
-  return data as APIKey[];
+  return (data?.apiKeys ?? []) as APIKey[];
 };
 
 export const createApiKey = async ({

@@ -17,6 +17,21 @@ services:
     networks:
       - swush
 
+  redis:
+    image: redis:7-alpine
+    container_name: swush-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - swush-redis:/data:rw
+    networks:
+      - swush
+
   app:
     image: iconical/swush:latest
     container_name: swush-app
@@ -24,8 +39,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - ./.env
+    environment:
+      JOB_RUNNER_ROLE: api
+      RUN_DB_MIGRATIONS: "true"
+      REDIS_URL: "redis://redis:6379/0"
 
     ports:
       - "3419:3000"
@@ -35,9 +56,30 @@ services:
     networks:
       - swush
 
+  worker:
+    image: iconical/swush:latest
+    container_name: swush-worker
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./.env
+    environment:
+      JOB_RUNNER_ROLE: worker
+      RUN_DB_MIGRATIONS: "false"
+      REDIS_URL: "redis://redis:6379/0"
+    volumes:
+      - swush-uploads:/data/uploads:rw
+    networks:
+      - swush
+
 volumes:
   swush-db:
   swush-uploads:
+  swush-redis:
 
 networks:
   swush:

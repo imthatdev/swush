@@ -17,7 +17,7 @@
 
 import "server-only";
 
-import { and, desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, lte, or, sql } from "drizzle-orm";
 import { spawn } from "child_process";
 import ffmpegPath from "ffmpeg-static";
 import { createWriteStream } from "fs";
@@ -28,6 +28,7 @@ import path from "path";
 import { db } from "@/db/client";
 import { files, streamJobs } from "@/db/schemas";
 import {
+  getDefaultStorageDriver,
   putFileToStorage,
   readFromStorage,
   statFromStorage,
@@ -35,11 +36,22 @@ import {
 } from "@/lib/storage";
 import { isMedia } from "@/lib/mime-types";
 import { createNotification } from "@/lib/server/notifications";
+import { runWithBackgroundCpuSlots } from "@/lib/server/background-workload";
+import { applyBackgroundProcessPriority } from "@/lib/server/process-priority";
+import { buildRetryPlan, resolveJobMaxAttempts } from "@/lib/server/job-retry";
+import { isJobExecutionEnabled } from "@/lib/server/job-runner-role";
 import {
   streamAssetStoredName,
   streamPlaylistName,
 } from "@/lib/server/stream-paths";
+import { releaseRedisLock, tryAcquireRedisLock } from "@/lib/server/redis";
 import { resolveWithin } from "@/lib/security/path";
+
+const STREAM_JOB_LOCK_TTL_MS = (() => {
+  const parsed = Number(process.env.REDIS_STREAM_JOB_LOCK_TTL_MS);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 60 * 60 * 1000;
+  return Math.floor(parsed);
+})();
 
 function safeFileExt(name: string) {
   const ext = path.extname(name).toLowerCase();
@@ -47,7 +59,12 @@ function safeFileExt(name: string) {
   return ".bin";
 }
 
-export type StreamJobStatus = "queued" | "processing" | "ready" | "failed";
+export type StreamJobStatus =
+  | "queued"
+  | "processing"
+  | "ready"
+  | "failed"
+  | "dead-letter";
 
 type StreamJobInput = {
   userId: string;
@@ -92,14 +109,20 @@ function readPositiveInt(value?: string | null) {
   return Math.floor(parsed);
 }
 
+function resolveFfmpegThreads() {
+  const parsed = Number(process.env.FFMPEG_THREADS);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 1;
+  return Math.max(1, Math.floor(parsed));
+}
+
 function resolveStreamJobLimits(requestedLimit?: number) {
   const hardMax = 50;
-  const defaultQueue = 15;
-  const defaultConcurrency = 5;
+  const defaultQueue = 10;
+  const defaultConcurrency = 2;
   const requested =
     Number.isFinite(requestedLimit) && (requestedLimit as number) > 0
       ? Math.floor(requestedLimit as number)
-      : 1;
+      : 3;
 
   const envQueue = readPositiveInt(process.env.STREAM_JOBS_QUEUE_LIMIT);
   const envConcurrency = readPositiveInt(process.env.STREAM_JOBS_CONCURRENCY);
@@ -112,6 +135,12 @@ function resolveStreamJobLimits(requestedLimit?: number) {
 
   return { queueLimit, concurrency };
 }
+
+const STREAM_JOB_CPU_SLOTS =
+  readPositiveInt(process.env.STREAM_JOB_CPU_SLOTS) ?? 2;
+const STREAM_JOB_MAX_ATTEMPTS = resolveJobMaxAttempts(
+  readPositiveInt(process.env.STREAM_JOB_MAX_ATTEMPTS),
+);
 
 async function streamStorageToFile(
   target: { userId: string; storedName: string },
@@ -143,7 +172,13 @@ async function runFfmpegHls(params: {
   const segmentPattern = resolveWithin(params.outputDir, "segment-%05d.ts");
   const playlistPath = resolveWithin(params.outputDir, streamPlaylistName());
 
-  const args: string[] = ["-y", "-i", params.inputPath];
+  const args: string[] = [
+    "-y",
+    "-threads",
+    String(resolveFfmpegThreads()),
+    "-i",
+    params.inputPath,
+  ];
 
   if (isMedia("audio", params.mimeType)) {
     args.push("-vn");
@@ -195,6 +230,7 @@ async function runFfmpegHls(params: {
   );
 
   const ffmpeg = spawn(ffmpegCmd, args);
+  applyBackgroundProcessPriority(ffmpeg);
   const stderrChunks: Buffer[] = [];
 
   ffmpeg.stderr.on("data", (chunk) => {
@@ -327,11 +363,15 @@ export async function enqueueStreamJob(input: StreamJobInput) {
   if (row?.status === "queued" || row?.status === "processing") return row.id;
   if (row?.status === "ready") return null;
 
-  if (row?.status === "failed") {
+  if (row?.status === "failed" || row?.status === "dead-letter") {
     await db
       .update(streamJobs)
       .set({
         status: "queued",
+        attempts: 0,
+        maxAttempts: STREAM_JOB_MAX_ATTEMPTS,
+        nextRunAt: new Date(),
+        deadLetterAt: null,
         error: null,
         updatedAt: new Date(),
         quality: input.quality ?? null,
@@ -346,6 +386,10 @@ export async function enqueueStreamJob(input: StreamJobInput) {
       userId: input.userId,
       fileId: input.fileId,
       status: "queued",
+      attempts: 0,
+      maxAttempts: STREAM_JOB_MAX_ATTEMPTS,
+      nextRunAt: new Date(),
+      deadLetterAt: null,
       quality: input.quality ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -356,6 +400,46 @@ export async function enqueueStreamJob(input: StreamJobInput) {
 }
 
 type StreamJobRow = typeof streamJobs.$inferSelect;
+
+async function markStreamDeadLetter(job: StreamJobRow, message: string) {
+  const maxAttempts = resolveJobMaxAttempts(job.maxAttempts);
+  await db
+    .update(streamJobs)
+    .set({
+      status: "dead-letter",
+      attempts: Math.max(job.attempts ?? 0, maxAttempts),
+      maxAttempts,
+      deadLetterAt: new Date(),
+      error: message,
+      updatedAt: new Date(),
+    })
+    .where(eq(streamJobs.id, job.id));
+}
+
+async function scheduleStreamRetry(job: StreamJobRow, message: string) {
+  const retry = buildRetryPlan({
+    currentAttempts: job.attempts,
+    maxAttempts: job.maxAttempts,
+  });
+
+  if (!retry.shouldRetry || !retry.nextRunAt) {
+    await markStreamDeadLetter(job, message);
+    return;
+  }
+
+  await db
+    .update(streamJobs)
+    .set({
+      status: "queued",
+      attempts: retry.attempts,
+      maxAttempts: retry.maxAttempts,
+      nextRunAt: retry.nextRunAt,
+      deadLetterAt: null,
+      error: message,
+      updatedAt: new Date(),
+    })
+    .where(eq(streamJobs.id, job.id));
+}
 
 async function processStreamJob(job: StreamJobRow) {
   await db
@@ -370,30 +454,17 @@ async function processStreamJob(job: StreamJobRow) {
     .limit(1);
 
   if (!file) {
-    await db
-      .update(streamJobs)
-      .set({
-        status: "failed",
-        error: "File not found",
-        updatedAt: new Date(),
-      })
-      .where(eq(streamJobs.id, job.id));
+    await markStreamDeadLetter(job, "File not found");
     return;
   }
 
   if (!isStreamSupported(file.mimeType)) {
-    await db
-      .update(streamJobs)
-      .set({
-        status: "failed",
-        error: "Stream not supported for this file type",
-        updatedAt: new Date(),
-      })
-      .where(eq(streamJobs.id, job.id));
+    await markStreamDeadLetter(job, "Stream not supported for this file type");
     return;
   }
 
-  const driver = (file.storageDriver || "local") as StorageDriver;
+  const driver = (file.storageDriver ||
+    (await getDefaultStorageDriver())) as StorageDriver;
   const playlistName = streamAssetStoredName(file.id, streamPlaylistName());
 
   try {
@@ -406,6 +477,10 @@ async function processStreamJob(job: StreamJobRow) {
         .update(streamJobs)
         .set({
           status: "ready",
+          attempts: 0,
+          maxAttempts: resolveJobMaxAttempts(job.maxAttempts),
+          nextRunAt: new Date(),
+          deadLetterAt: null,
           outputMimeType: "application/vnd.apple.mpegurl",
           outputSize: existing.size,
           updatedAt: new Date(),
@@ -443,6 +518,10 @@ async function processStreamJob(job: StreamJobRow) {
       .update(streamJobs)
       .set({
         status: "ready",
+        attempts: 0,
+        maxAttempts: resolveJobMaxAttempts(job.maxAttempts),
+        nextRunAt: new Date(),
+        deadLetterAt: null,
         outputMimeType: "application/vnd.apple.mpegurl",
         outputSize: totalSize,
         updatedAt: new Date(),
@@ -462,34 +541,49 @@ async function processStreamJob(job: StreamJobRow) {
       0,
       1024,
     );
-    await db
-      .update(streamJobs)
-      .set({
-        status: "failed",
-        error: msg,
-        updatedAt: new Date(),
-      })
-      .where(eq(streamJobs.id, job.id));
+    await scheduleStreamRetry(job, msg);
   }
 }
 
 export async function runStreamJobById(jobId: string) {
-  const [job] = await db
-    .select()
-    .from(streamJobs)
-    .where(eq(streamJobs.id, jobId))
-    .limit(1);
-  if (!job || job.status !== "queued") return { processed: 0 };
-  await processStreamJob(job);
-  return { processed: 1 };
+  if (!isJobExecutionEnabled()) return { processed: 0 };
+
+  const { lock, available } = await tryAcquireRedisLock(
+    `stream-job:${jobId}`,
+    STREAM_JOB_LOCK_TTL_MS,
+  );
+  if (available && !lock) return { processed: 0 };
+
+  try {
+    const [job] = await db
+      .select()
+      .from(streamJobs)
+      .where(eq(streamJobs.id, jobId))
+      .limit(1);
+    if (!job || job.status !== "queued") return { processed: 0 };
+    if (job.nextRunAt && job.nextRunAt > new Date()) return { processed: 0 };
+    await runWithBackgroundCpuSlots(STREAM_JOB_CPU_SLOTS, () =>
+      processStreamJob(job),
+    );
+    return { processed: 1 };
+  } finally {
+    await releaseRedisLock(lock);
+  }
 }
 
-export async function runStreamJobs(limit = 1) {
+export async function runStreamJobs(limit = 3) {
+  if (!isJobExecutionEnabled()) return { processed: 0 };
+
   const { queueLimit, concurrency } = resolveStreamJobLimits(limit);
   const jobs = await db
     .select()
     .from(streamJobs)
-    .where(eq(streamJobs.status, "queued"))
+    .where(
+      and(
+        eq(streamJobs.status, "queued"),
+        lte(streamJobs.nextRunAt, new Date()),
+      ),
+    )
     .orderBy(streamJobs.createdAt)
     .limit(queueLimit);
 
@@ -503,8 +597,21 @@ export async function runStreamJobs(limit = 1) {
       while (queue.length > 0) {
         const job = queue.shift();
         if (!job) break;
-        await processStreamJob(job);
-        processed += 1;
+
+        const { lock, available } = await tryAcquireRedisLock(
+          `stream-job:${job.id}`,
+          STREAM_JOB_LOCK_TTL_MS,
+        );
+        if (available && !lock) continue;
+
+        try {
+          await runWithBackgroundCpuSlots(STREAM_JOB_CPU_SLOTS, () =>
+            processStreamJob(job),
+          );
+          processed += 1;
+        } finally {
+          await releaseRedisLock(lock);
+        }
       }
       return processed;
     }),
@@ -523,6 +630,8 @@ export async function kickStreamRunner(params?: {
   limit?: number;
   jobId?: string | null;
 }) {
+  if (!isJobExecutionEnabled()) return { processed: 0 };
+
   if (params?.jobId) {
     pendingJobIds.add(params.jobId);
   } else {
@@ -534,17 +643,31 @@ export async function kickStreamRunner(params?: {
 
   const run = async () => {
     let processed = 0;
-    while (pendingJobIds.size > 0) {
-      const [jobId] = pendingJobIds;
-      if (!jobId) break;
-      pendingJobIds.delete(jobId);
-      const res = await runStreamJobById(jobId);
-      processed += res.processed;
+    if (pendingJobIds.size > 0) {
+      const jobIds = Array.from(pendingJobIds);
+      pendingJobIds.clear();
+      const { concurrency } = resolveStreamJobLimits(jobIds.length);
+      const queue = [...jobIds];
+      const workerCount = Math.min(concurrency, queue.length);
+      const results = await Promise.all(
+        Array.from({ length: workerCount }, async () => {
+          let localProcessed = 0;
+          while (queue.length > 0) {
+            const jobId = queue.shift();
+            if (!jobId) break;
+            const res = await runStreamJobById(jobId);
+            localProcessed += res.processed;
+          }
+          return localProcessed;
+        }),
+      );
+
+      processed += results.reduce((sum, count) => sum + count, 0);
     }
 
     if (pendingBatchRun) {
       pendingBatchRun = false;
-      const limit = typeof params?.limit === "number" ? params.limit : 1;
+      const limit = typeof params?.limit === "number" ? params.limit : 3;
       const res = await runStreamJobs(limit);
       processed += res.processed;
     }
@@ -590,4 +713,12 @@ export async function enqueueMissingStreams(limit = 10) {
   }
 
   return { enqueued };
+}
+
+export function getStreamRunnerState() {
+  return {
+    active: streamRunnerActive,
+    pendingById: pendingJobIds.size,
+    pendingBatchRun,
+  };
 }

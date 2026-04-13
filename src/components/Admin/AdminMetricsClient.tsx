@@ -145,6 +145,11 @@ export default function AdminMetricsClient() {
               helper={`${numberFormat.format(metrics.totals.files)} files`}
             />
             <MetricCard
+              label="Bookmarks"
+              value={numberFormat.format(metrics.totals.bookmarks)}
+              helper="Total created"
+            />
+            <MetricCard
               label="Short links"
               value={numberFormat.format(metrics.totals.shortLinks)}
               helper="Total created"
@@ -249,6 +254,12 @@ export default function AdminMetricsClient() {
                     name="Short Links"
                     stackId="content"
                     fill="var(--color-chart-5)"
+                  />
+                  <Bar
+                    dataKey="bookmarks"
+                    name="Bookmarks"
+                    stackId="content"
+                    fill="var(--color-chart-4)"
                   />
                 </BarChart>
               </ResponsiveContainer>

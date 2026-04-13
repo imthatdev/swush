@@ -411,6 +411,10 @@ export default function WatchClient({ username }: { username: string }) {
   }
 
   const paginatedItems = items;
+  const visibleSelectionOrder = useMemo(
+    () => paginatedItems.map((item) => item.id),
+    [paginatedItems],
+  );
 
   useEffect(() => {
     clearSelection();
@@ -528,11 +532,11 @@ export default function WatchClient({ username }: { username: string }) {
           x.id === notesItem.id ? { ...x, notes: updated.notes } : x,
         ),
       );
-      toast.success("Details saved");
+      toast.success("Notes saved");
       setOpenNotes(false);
       setNotesItem(null);
     } else {
-      toast.error("Failed to save details");
+      toast.error("Failed to save notes");
     }
   }
 
@@ -783,14 +787,21 @@ export default function WatchClient({ username }: { username: string }) {
                     )}
                     onClick={
                       selectedIds.length > 0
-                        ? () => toggleOne(it.id)
+                        ? () =>
+                            toggleOne(it.id, {
+                              orderedIds: visibleSelectionOrder,
+                            })
                         : undefined
                     }
                   >
                     <div className="absolute top-3 left-3 flex items-center gap-2 text-xs text-muted-foreground md:opacity-0 group-hover:opacity-100">
                       <Checkbox
                         checked={isSelected(it.id)}
-                        onCheckedChange={() => toggleOne(it.id)}
+                        onCheckedChange={() =>
+                          toggleOne(it.id, {
+                            orderedIds: visibleSelectionOrder,
+                          })
+                        }
                       />
                     </div>
 
@@ -870,7 +881,7 @@ export default function WatchClient({ username }: { username: string }) {
                           variant="outline"
                           className="backdrop-blur-md"
                           onClick={() => openNotesEditor(it)}
-                          title="Edit details"
+                          title="Edit notes"
                         >
                           <IconNote />
                         </Button>
@@ -1208,7 +1219,7 @@ export default function WatchClient({ username }: { username: string }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Edit Details{notesItem ? ` ꕀ ${notesItem.title}` : ""}
+              Edit Notes{notesItem ? ` ꕀ ${notesItem.title}` : ""}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">

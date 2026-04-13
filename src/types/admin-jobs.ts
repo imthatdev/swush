@@ -20,6 +20,7 @@ export type AdminJobName =
   | "preview-generation"
   | "stream-generation"
   | "storage-cleanup"
+  | "pwa-subscription-cleanup"
   | "steam-playtime"
   | "anilist-watching";
 

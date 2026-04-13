@@ -16,14 +16,14 @@
  */
 
 import { db } from "@/db/client";
-import { user, userInfo, files, shortLinks } from "@/db/schemas";
+import { user, userInfo, files, shortLinks, bookmarks } from "@/db/schemas";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { getServerSettings, type ServerSettings } from "../settings";
 import { sendLimitReachedEmail } from "@/lib/email";
 
 export type Role = "admin" | "user" | "owner";
 
-export type ResourceKind = "files" | "shortLink";
+export type ResourceKind = "files" | "shortLink" | "bookmark";
 
 export interface LimitCheckArgs {
   userId: string;
@@ -42,6 +42,7 @@ export class LimitPolicyError extends Error {
 const userCountLimitCols = {
   files: "filesLimit",
   shortLink: "shortLinksLimit",
+  bookmark: "bookmarksLimit",
 } as const;
 
 type UserCountLimitColumn =
@@ -50,12 +51,14 @@ type UserCountLimitColumn =
 const serverCountLimitBases = {
   files: "filesLimit",
   shortLink: "shortLinksLimit",
+  bookmark: "bookmarksLimit",
 } as const;
 
 type UserLimitSnapshot = Pick<
   typeof userInfo.$inferSelect,
   | "filesLimit"
   | "shortLinksLimit"
+  | "bookmarksLimit"
   | "maxStorageMb"
   | "maxUploadMb"
   | "allowRemoteUpload"
@@ -69,6 +72,7 @@ async function getUserLimitSnapshot(
     columns: {
       filesLimit: true,
       shortLinksLimit: true,
+      bookmarksLimit: true,
       maxUploadMb: true,
       maxStorageMb: true,
       allowRemoteUpload: true,
@@ -138,7 +142,9 @@ export async function getUsageForUser(
   userId: string,
   kind: ResourceKind,
 ): Promise<number> {
-  const countFor = async (table: typeof files | typeof shortLinks) => {
+  const countFor = async (
+    table: typeof files | typeof shortLinks | typeof bookmarks,
+  ) => {
     const [{ total }] = await db
       .select({ total: sql<number>`COALESCE(COUNT(*), 0)` })
       .from(table)
@@ -152,6 +158,9 @@ export async function getUsageForUser(
     }
     case "shortLink": {
       return countFor(shortLinks);
+    }
+    case "bookmark": {
+      return countFor(bookmarks);
     }
   }
 }
@@ -330,9 +339,10 @@ export async function getRemainingSummary(userId: string, role?: Role) {
   const [settings, snapshot]: [ServerSettings, UserLimitSnapshot | null] =
     await Promise.all([getServerSettings(), getUserLimitSnapshot(userId)]);
 
-  const [filesUsed, shortLinksUsed] = await Promise.all([
+  const [filesUsed, shortLinksUsed, bookmarksUsed] = await Promise.all([
     getUsageForUser(userId, "files"),
     getUsageForUser(userId, "shortLink"),
+    getUsageForUser(userId, "bookmark"),
   ]);
 
   const resources: Record<ResourceKind, { used: number; limit: number }> = {
@@ -349,6 +359,15 @@ export async function getRemainingSummary(userId: string, role?: Role) {
       used: shortLinksUsed,
       limit: resolveCountLimit({
         kind: "shortLink",
+        role: r,
+        userSnapshot: snapshot,
+        settings,
+      }),
+    },
+    bookmark: {
+      used: bookmarksUsed,
+      limit: resolveCountLimit({
+        kind: "bookmark",
         role: r,
         userSnapshot: snapshot,
         settings,

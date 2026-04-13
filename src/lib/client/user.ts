@@ -42,6 +42,7 @@ type UserInfoFields = {
   bookmarksLimit?: number | null;
   recipesLimit?: number | null;
   allowRemoteUpload?: boolean | null;
+  allowBookmarks?: boolean | null;
   allowMeetings?: boolean | null;
   disableApiTokens?: boolean | null;
   banned?: boolean | null;
@@ -78,7 +79,9 @@ async function getUserWithInfoById(
       maxUploadMb: userInfo.maxUploadMb,
       filesLimit: userInfo.filesLimit,
       shortLinksLimit: userInfo.shortLinksLimit,
+      bookmarksLimit: userInfo.bookmarksLimit,
       allowRemoteUpload: userInfo.allowRemoteUpload,
+      allowBookmarks: userInfo.allowBookmarks,
       disableApiTokens: userInfo.disableApiTokens,
       banned: userInfo.banned,
       banReason: userInfo.banReason,
@@ -151,6 +154,7 @@ function isApiKeyRequestAllowed(req: NextRequest) {
     { prefix: "/api/v1/remote-upload", methods: ["POST", "GET", "DELETE"] },
     { prefix: "/api/v1/shorten", methods: ["POST"] },
     { prefix: "/api/v1/shorten/p", methods: ["POST"] },
+    { prefix: "/api/v1/bookmarks", methods: ["POST"] },
     { prefix: "/api/graphql", methods: ["POST"] },
     { prefix: "/api/v1/avatar/upload", methods: ["POST"] },
   ];
@@ -179,7 +183,7 @@ export const getCurrentUserFromToken = async (
     },
   });
 
-  if (!result?.valid || !result?.key?.userId) return null;
+  if (!result?.valid || !result?.key?.referenceId) return null;
 
   if (requiredScopes?.length) {
     const assignedScopes = normalizeApiKeyScopes(
@@ -188,7 +192,7 @@ export const getCurrentUserFromToken = async (
     if (!hasRequiredApiKeyScopes(assignedScopes, requiredScopes)) return null;
   }
 
-  const resolved = await getUserWithInfoById(result.key.userId);
+  const resolved = await getUserWithInfoById(result.key.referenceId);
   if (resolved?.disableApiTokens) return null;
   return resolved;
 };

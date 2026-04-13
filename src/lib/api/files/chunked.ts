@@ -81,6 +81,7 @@ import {
   normalizeMaxViews,
   normalizeMaxViewsAction,
 } from "@/lib/server/max-views";
+import { buildShareUrl } from "@/lib/api/helpers";
 
 type ChunkedUploadMeta = {
   uploadId: string;
@@ -927,6 +928,11 @@ export async function completeChunkedUpload(req: NextRequest) {
       incomingNewTagNames: meta.incomingNewTagNames,
     });
 
+    const fileUrl = buildShareUrl(`/x/${row.slug}`, {
+      appUrl: req.nextUrl.origin,
+      sharingDomain: settings.sharingDomain,
+    });
+
     await rm(dir, { recursive: true, force: true });
 
     return {
@@ -945,7 +951,7 @@ export async function completeChunkedUpload(req: NextRequest) {
         createdAt: row.createdAt,
         folder: meta.incomingFolderName || null,
         tags: responseTags,
-        url: `${req.nextUrl.origin}/x/${row.slug}`,
+        url: fileUrl,
       },
     };
   } catch (err) {

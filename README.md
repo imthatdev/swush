@@ -102,17 +102,28 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 > **Note:** The Docker setup has been recently updated and optimized for smaller image size and faster builds.
 
+Compose files now run two services by default:
+- `app` (`JOB_RUNNER_ROLE=api`) serves HTTP/API traffic.
+- `worker` (`JOB_RUNNER_ROLE=worker`) handles heavy background jobs (transcoding, previews, remote uploads, exports, cleanup).
+
+This keeps API latency stable while long-running jobs are isolated.
+
 ### Build and run with remote database (Neon, Supabase, etc.)
 ```bash
-docker compose up -d --build
+docker compose -f docker/docker-compose.remote.yml up -d --build
 ```
 
 ### Run with self-hosted PostgreSQL
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --build
+docker compose -f docker/docker-compose.yml up -d --build
 ```
 
-- The app will be accessible at [http://localhost:3000](http://localhost:3000).
+### Scale workers independently
+```bash
+docker compose -f docker/docker-compose.yml up -d --scale worker=2
+```
+
+- The app will be accessible at [http://localhost:3419](http://localhost:3419).
 - PostgreSQL will be exposed on port `5432` (credentials configured in `.env`).
 
 ## ☁️ Cloudflare Cache Rules (HLS Only)

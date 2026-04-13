@@ -19,24 +19,30 @@ import "server-only";
 import { nanoid } from "nanoid";
 import { db } from "@/db/client";
 import { remoteUploadJobs } from "@/db/schemas";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, lte } from "drizzle-orm";
 import { downloadWithYtDlp } from "@/lib/server/yt-dlp";
-import { getDefaultStorageDriver, putFileToStorage } from "@/lib/storage";
+import { getDefaultStorageDriver, putStreamToStorage } from "@/lib/storage";
 import { files as filesTable } from "@/db/schemas/core-schema";
 import path from "path";
+import { createReadStream } from "fs";
+import { open, rm, stat } from "fs/promises";
 import { fileTypeFromBuffer } from "file-type";
 import { enqueuePreviewJob, kickPreviewRunner } from "./preview-jobs";
 import { enqueueStreamJob, kickStreamRunner } from "./stream-jobs";
 import { createNotification } from "./notifications";
 import { getUserUploadSettings } from "@/lib/server/upload-settings";
 import { assertSafeExternalHttpUrl } from "@/lib/security/url";
+import { runWithBackgroundIoSlots } from "@/lib/server/background-workload";
+import { buildRetryPlan, resolveJobMaxAttempts } from "@/lib/server/job-retry";
+import { isJobExecutionEnabled } from "@/lib/server/job-runner-role";
 
 export type RemoteUploadJobStatus =
   | "queued"
   | "downloading"
   | "processing"
   | "completed"
-  | "failed";
+  | "failed"
+  | "dead-letter";
 
 export type RemoteUploadJob = {
   id: string;
@@ -45,11 +51,49 @@ export type RemoteUploadJob = {
   name?: string | null;
   status: RemoteUploadJobStatus;
   percent: number;
+  attempts: number;
+  maxAttempts: number;
+  nextRunAt: Date;
+  deadLetterAt?: Date | null;
   fileId?: string | null;
   error?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
+
+const REMOTE_UPLOAD_DEFAULT_CONCURRENCY = 2;
+
+function readPositiveInt(value: string | undefined, fallback: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.max(1, Math.floor(parsed));
+}
+
+const REMOTE_UPLOAD_MAX_CONCURRENCY = (() => {
+  return readPositiveInt(
+    process.env.REMOTE_UPLOAD_JOBS_CONCURRENCY,
+    REMOTE_UPLOAD_DEFAULT_CONCURRENCY,
+  );
+})();
+const REMOTE_UPLOAD_IO_SLOTS = readPositiveInt(
+  process.env.REMOTE_UPLOAD_IO_SLOTS,
+  1,
+);
+const REMOTE_UPLOAD_MAX_ATTEMPTS = resolveJobMaxAttempts(
+  readPositiveInt(process.env.REMOTE_UPLOAD_MAX_ATTEMPTS, 0),
+);
+const REMOTE_UPLOAD_PROGRESS_UPDATE_MS = (() => {
+  const parsed = Number(process.env.REMOTE_UPLOAD_PROGRESS_UPDATE_MS);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 1200;
+  return Math.max(250, Math.floor(parsed));
+})();
+const REMOTE_UPLOAD_PROGRESS_STEP = (() => {
+  const parsed = Number(process.env.REMOTE_UPLOAD_PROGRESS_STEP);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 2;
+  return Math.max(1, Math.floor(parsed));
+})();
+
+let remoteUploadRunnerWorkers = 0;
 
 function appendExtIfMissing(name: string, ext: string): string {
   const trimmed = name.trim();
@@ -72,13 +116,17 @@ export async function createRemoteUploadJob(
     name,
     status: "queued",
     percent: 0,
+    attempts: 0,
+    maxAttempts: REMOTE_UPLOAD_MAX_ATTEMPTS,
+    nextRunAt: now,
+    deadLetterAt: null,
     fileId: null,
     error: null,
     createdAt: now,
     updatedAt: now,
   };
   await db.insert(remoteUploadJobs).values(job);
-  void runRemoteUploadJob(id);
+  kickRemoteUploadRunner();
   return job;
 }
 
@@ -102,42 +150,207 @@ export async function listRemoteUploadJobs(
   const rows = await db
     .select()
     .from(remoteUploadJobs)
-    .where(eq(remoteUploadJobs.userId, userId));
+    .where(eq(remoteUploadJobs.userId, userId))
+    .orderBy(remoteUploadJobs.createdAt);
   return rows.map((row) => ({
     ...row,
     status: row.status as RemoteUploadJobStatus,
   }));
 }
 
-async function runRemoteUploadJob(id: string) {
-  let job = await getRemoteUploadJob(id);
-  if (!job) return;
+async function claimNextRemoteUploadJob(): Promise<RemoteUploadJob | null> {
+  const [next] = await db
+    .select()
+    .from(remoteUploadJobs)
+    .where(
+      and(
+        eq(remoteUploadJobs.status, "queued"),
+        lte(remoteUploadJobs.nextRunAt, new Date()),
+      ),
+    )
+    .orderBy(asc(remoteUploadJobs.createdAt))
+    .limit(1);
+
+  if (!next) return null;
+
+  const [claimed] = await db
+    .update(remoteUploadJobs)
+    .set({
+      status: "downloading",
+      percent: 0,
+      error: null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(remoteUploadJobs.id, next.id),
+        eq(remoteUploadJobs.status, "queued"),
+      ),
+    )
+    .returning();
+
+  if (!claimed) return null;
+
+  return {
+    ...claimed,
+    status: claimed.status as RemoteUploadJobStatus,
+  };
+}
+
+async function runRemoteUploadWorker() {
+  if (!isJobExecutionEnabled()) return;
+
+  while (true) {
+    const next = await claimNextRemoteUploadJob();
+    if (!next) return;
+    await runWithBackgroundIoSlots(REMOTE_UPLOAD_IO_SLOTS, () =>
+      runRemoteUploadJob(next),
+    );
+  }
+}
+
+export function kickRemoteUploadRunner() {
+  if (!isJobExecutionEnabled()) return;
+
+  while (remoteUploadRunnerWorkers < REMOTE_UPLOAD_MAX_CONCURRENCY) {
+    remoteUploadRunnerWorkers += 1;
+    setImmediate(() => {
+      void runRemoteUploadWorker()
+        .catch(() => {})
+        .finally(() => {
+          remoteUploadRunnerWorkers = Math.max(
+            0,
+            remoteUploadRunnerWorkers - 1,
+          );
+        });
+    });
+  }
+}
+
+async function markRemoteUploadDeadLetter(
+  job: RemoteUploadJob,
+  message: string,
+) {
+  const maxAttempts = resolveJobMaxAttempts(job.maxAttempts);
+  await db
+    .update(remoteUploadJobs)
+    .set({
+      status: "dead-letter",
+      attempts: Math.max(job.attempts ?? 0, maxAttempts),
+      maxAttempts,
+      deadLetterAt: new Date(),
+      error: message,
+      updatedAt: new Date(),
+    })
+    .where(eq(remoteUploadJobs.id, job.id));
+}
+
+async function scheduleRemoteUploadRetry(
+  job: RemoteUploadJob,
+  message: string,
+) {
+  const retry = buildRetryPlan({
+    currentAttempts: job.attempts,
+    maxAttempts: job.maxAttempts,
+  });
+
+  if (!retry.shouldRetry || !retry.nextRunAt) {
+    await markRemoteUploadDeadLetter(job, message);
+    return;
+  }
+
+  await db
+    .update(remoteUploadJobs)
+    .set({
+      status: "queued",
+      attempts: retry.attempts,
+      maxAttempts: retry.maxAttempts,
+      nextRunAt: retry.nextRunAt,
+      deadLetterAt: null,
+      error: message,
+      updatedAt: new Date(),
+    })
+    .where(eq(remoteUploadJobs.id, job.id));
+}
+
+async function runRemoteUploadJob(initialJob: RemoteUploadJob) {
+  let job = initialJob;
+  let tempFilePath: string | null = null;
 
   const update = async (fields: Partial<RemoteUploadJob>) => {
+    const now = new Date();
+    job = {
+      ...job,
+      ...fields,
+      updatedAt: now,
+    };
     await db
       .update(remoteUploadJobs)
-      .set({ ...fields, updatedAt: new Date() })
-      .where(eq(remoteUploadJobs.id, id));
-    job = await getRemoteUploadJob(id);
+      .set({ ...fields, updatedAt: now })
+      .where(eq(remoteUploadJobs.id, job.id));
   };
 
-  await update({ status: "downloading", percent: 0 });
+  let lastProgressPercent = Math.max(0, Math.floor(job.percent || 0));
+  let lastProgressAt = 0;
+  let progressQueue = Promise.resolve();
+
+  const updateProgress = async (rawPercent: number, force = false) => {
+    const percent = Math.max(0, Math.min(100, Math.round(rawPercent)));
+    const now = Date.now();
+
+    if (!force) {
+      if (percent <= lastProgressPercent) return;
+      const progressDelta = percent - lastProgressPercent;
+      const timeDelta = now - lastProgressAt;
+      if (
+        progressDelta < REMOTE_UPLOAD_PROGRESS_STEP &&
+        timeDelta < REMOTE_UPLOAD_PROGRESS_UPDATE_MS
+      ) {
+        return;
+      }
+    }
+
+    lastProgressPercent = percent;
+    lastProgressAt = now;
+    progressQueue = progressQueue
+      .then(() => update({ percent }))
+      .catch(() => {});
+
+    if (force) {
+      await progressQueue;
+    }
+  };
 
   try {
     const safeUrl = assertSafeExternalHttpUrl(job.url);
     const tmp = await downloadWithYtDlp(safeUrl, "remote", async (p) => {
       const percent = Math.max(0, Math.min(80, Math.round((p ?? 0) * 0.8)));
-      await update({ percent });
+      void updateProgress(percent);
     });
+    tempFilePath = tmp.filePath;
+    await updateProgress(80, true);
     await update({ status: "processing", percent: 80 });
 
-    const { readFile, unlink } = await import("fs/promises");
-    const buf = await readFile(tmp.filePath);
-    const size = buf.length;
+    const fileStats = await stat(tmp.filePath);
+    const size = fileStats.size;
     await update({ percent: 85 });
 
-    const sig = await fileTypeFromBuffer(buf);
+    const fd = await open(tmp.filePath, "r");
+    const signatureBytes = Buffer.alloc(4100);
+    let bytesRead = 0;
+    try {
+      const read = await fd.read(signatureBytes, 0, signatureBytes.length, 0);
+      bytesRead = read.bytesRead;
+    } finally {
+      await fd.close();
+    }
+
+    const sig =
+      bytesRead > 0
+        ? await fileTypeFromBuffer(signatureBytes.slice(0, bytesRead))
+        : null;
     const effectiveMime = sig?.mime || "application/octet-stream";
+
     const ext = path.extname(tmp.fileName) || "";
     const storedName = `${nanoid()}${ext}`;
 
@@ -153,17 +366,14 @@ async function runRemoteUploadJob(id: string) {
     const originalName = appendExtIfMissing(baseName, ext);
 
     const driver = await getDefaultStorageDriver();
-    await putFileToStorage({
+    await putStreamToStorage({
       target: { userId: job.userId, storedName },
-      buffer: buf,
+      stream: createReadStream(tmp.filePath),
       contentType: effectiveMime,
+      contentLength: size,
       driver,
     });
     await update({ percent: 90 });
-
-    try {
-      await unlink(tmp.filePath);
-    } catch {}
 
     const [row] = await db
       .insert(filesTable)
@@ -191,9 +401,11 @@ async function runRemoteUploadJob(id: string) {
         userId: job.userId,
         fileId: row.id,
       });
-      setImmediate(() => {
-        void kickPreviewRunner({ jobId: previewJobId }).catch(() => {});
-      });
+      if (previewJobId) {
+        setImmediate(() => {
+          void kickPreviewRunner({ jobId: previewJobId }).catch(() => {});
+        });
+      }
     }
 
     if (
@@ -209,12 +421,15 @@ async function runRemoteUploadJob(id: string) {
         fileId: row.id,
         quality: streamQuality,
       });
-      setImmediate(() => {
-        void kickStreamRunner({ jobId: streamJobId }).catch(() => {});
-      });
+      if (streamJobId) {
+        setImmediate(() => {
+          void kickStreamRunner({ jobId: streamJobId }).catch(() => {});
+        });
+      }
     }
 
     await update({ percent: 100, status: "completed", fileId: row.id });
+    await update({ attempts: 0, nextRunAt: new Date(), deadLetterAt: null });
     await createNotification({
       userId: job.userId,
       title: "Remote upload completed",
@@ -223,10 +438,15 @@ async function runRemoteUploadJob(id: string) {
       data: { jobId: job.id, fileId: row.id, url: job.url },
     });
   } catch (err) {
-    await update({
-      status: "failed",
-      error: (err as Error)?.message ?? "failed",
-    });
+    const message = String(
+      (err as Error)?.message || "Remote upload failed",
+    ).slice(0, 1024);
+    await scheduleRemoteUploadRetry(job, message);
+  } finally {
+    await progressQueue.catch(() => {});
+    if (tempFilePath) {
+      await rm(tempFilePath, { force: true }).catch(() => {});
+    }
   }
 }
 
@@ -243,4 +463,18 @@ export async function deleteRemoteUploadJobs(
         inArray(remoteUploadJobs.id, ids),
       ),
     );
+}
+
+setImmediate(() => {
+  if (isJobExecutionEnabled()) {
+    kickRemoteUploadRunner();
+  }
+});
+
+export function getRemoteUploadRunnerState() {
+  return {
+    enabled: isJobExecutionEnabled(),
+    activeWorkers: remoteUploadRunnerWorkers,
+    maxWorkers: REMOTE_UPLOAD_MAX_CONCURRENCY,
+  };
 }

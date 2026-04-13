@@ -17,7 +17,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,47 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
+type PushSubscriptionRecord = {
+  id: string;
+  endpoint: string;
+  endpointHost: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+const STALE_PUSH_DAYS = 30;
+const STALE_PUSH_MS = STALE_PUSH_DAYS * 24 * 60 * 60 * 1000;
+
+function formatRelativeTime(iso: string) {
+  const value = new Date(iso).getTime();
+  if (!Number.isFinite(value)) return "unknown";
+
+  const diffMs = Date.now() - value;
+  if (diffMs <= 0) return "just now";
+
+  const diffMinutes = Math.floor(diffMs / 60_000);
+  if (diffMinutes < 1) return "just now";
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return `${diffDays}d ago`;
+
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) return `${diffMonths}mo ago`;
+
+  const diffYears = Math.floor(diffMonths / 12);
+  return `${diffYears}y ago`;
+}
+
+function formatDateTime(iso: string) {
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return "unknown";
+  return date.toLocaleString();
+}
+
 function getDisplayMode() {
   if (typeof window === "undefined") return "browser";
   if (window.matchMedia?.("(display-mode: standalone)").matches)
@@ -37,6 +78,30 @@ function getDisplayMode() {
   if ((window.navigator as unknown as { standalone?: boolean }).standalone)
     return "standalone";
   return "browser";
+}
+
+function isIosSafariBrowser() {
+  if (typeof window === "undefined") return false;
+  const ua = window.navigator.userAgent;
+  const platform = window.navigator.platform || "";
+  const maxTouchPoints = window.navigator.maxTouchPoints || 0;
+  const isIpadOsDesktop = platform === "MacIntel" && maxTouchPoints > 1;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || isIpadOsDesktop;
+  const isWebKit = /WebKit/.test(ua);
+  const hasOtherBrowserToken = /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+  return isIOS && isWebKit && !hasOtherBrowserToken;
+}
+
+function isMacSafariBrowser() {
+  if (typeof window === "undefined") return false;
+  const ua = window.navigator.userAgent;
+  const platform = window.navigator.platform || "";
+  const maxTouchPoints = window.navigator.maxTouchPoints || 0;
+  const isMacDesktop = /Mac/.test(platform) && maxTouchPoints <= 1;
+  const isSafari = /Safari/.test(ua);
+  const hasOtherBrowserToken =
+    /Chrome|Chromium|CriOS|FxiOS|EdgiOS|OPiOS|OPR|Opera/.test(ua);
+  return isMacDesktop && isSafari && !hasOtherBrowserToken;
 }
 
 export default function PwaSettings() {
@@ -49,6 +114,9 @@ export default function PwaSettings() {
   const [pushSupported, setPushSupported] = useState(false);
   const [pushSubscription, setPushSubscription] =
     useState<PushSubscription | null>(null);
+  const [pushDevices, setPushDevices] = useState<PushSubscriptionRecord[]>([]);
+  const [pushDevicesLoading, setPushDevicesLoading] = useState(false);
+  const [removeDeviceId, setRemoveDeviceId] = useState<string | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMessage, setPushMessage] = useState("");
   const [pushSound, setPushSound] = useState("");
@@ -58,6 +126,30 @@ export default function PwaSettings() {
   const [swError, setSwError] = useState<string | null>(null);
   const { vapidPublicKey } = useAppConfig();
   const hasPublicKey = Boolean(vapidPublicKey);
+  const isIosSafari = useMemo(() => isIosSafariBrowser(), []);
+  const isMacSafari = useMemo(() => isMacSafariBrowser(), []);
+
+  const loadPushDevices = useCallback(async () => {
+    setPushDevicesLoading(true);
+    try {
+      const res = await fetch(apiV1("/profile/push"), { cache: "no-store" });
+      const body = (await res.json().catch(() => ({}))) as {
+        subscriptions?: PushSubscriptionRecord[];
+      };
+      if (!res.ok) {
+        throw new Error("Failed to load push devices");
+      }
+      setPushDevices(
+        Array.isArray(body.subscriptions) ? body.subscriptions : [],
+      );
+    } catch (e) {
+      toast.error("Failed to load push devices", {
+        description: (e as Error).message,
+      });
+    } finally {
+      setPushDevicesLoading(false);
+    }
+  }, []);
 
   const displayMode = useMemo(() => getDisplayMode(), []);
 
@@ -138,11 +230,14 @@ export default function PwaSettings() {
       return;
     }
     setPushSupported(true);
-    ensureServiceWorkerReady()
-      .then((reg) => reg?.pushManager.getSubscription())
-      .then((sub) => setPushSubscription(sub ?? null))
+    void ensureServiceWorkerReady()
+      .then(async (reg) => {
+        const sub = await reg?.pushManager.getSubscription();
+        setPushSubscription(sub ?? null);
+        await loadPushDevices();
+      })
       .catch(() => {});
-  }, []);
+  }, [loadPushDevices]);
 
   const urlBase64ToUint8Array = (base64String: string) => {
     const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -159,7 +254,22 @@ export default function PwaSettings() {
 
   const install = async () => {
     if (!deferredPrompt) {
-      toast.message("Install prompt not available yet");
+      if (isIosSafari) {
+        toast.message("Use Safari install menu", {
+          description: "Tap Share, then Add to Home Screen.",
+        });
+        return;
+      }
+      if (isMacSafari) {
+        toast.message("Use Safari install menu", {
+          description: "From Safari menu bar, choose File, then Add to Dock.",
+        });
+        return;
+      }
+      toast.message("Install prompt not available yet", {
+        description:
+          "Use your browser menu to install, or keep browsing until the prompt becomes available.",
+      });
       return;
     }
 
@@ -274,6 +384,7 @@ export default function PwaSettings() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error || "Failed to save subscription");
       }
+      await loadPushDevices();
       toast.success("Push notifications enabled");
     } catch (e) {
       toast.error("Failed to enable push", {
@@ -296,6 +407,7 @@ export default function PwaSettings() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ endpoint }),
       });
+      await loadPushDevices();
       toast.success("Push notifications disabled");
     } catch (e) {
       toast.error("Failed to disable push", {
@@ -303,6 +415,41 @@ export default function PwaSettings() {
       });
     } finally {
       setPushBusy(false);
+    }
+  };
+
+  const removePushDevice = async (device: PushSubscriptionRecord) => {
+    setRemoveDeviceId(device.id);
+    const isCurrent = pushSubscription?.endpoint === device.endpoint;
+
+    try {
+      if (isCurrent && pushSubscription) {
+        await pushSubscription.unsubscribe().catch(() => {});
+        setPushSubscription(null);
+      }
+
+      const res = await fetch(apiV1("/profile/push"), {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subscriptionId: device.id,
+          endpoint: device.endpoint,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || "Failed to remove device");
+      }
+
+      setPushDevices((prev) => prev.filter((item) => item.id !== device.id));
+      toast.success("Push device removed");
+    } catch (e) {
+      toast.error("Failed to remove push device", {
+        description: (e as Error).message,
+      });
+    } finally {
+      setRemoveDeviceId(null);
     }
   };
 
@@ -326,6 +473,7 @@ export default function PwaSettings() {
         throw new Error(body?.error || "Failed to send push");
       }
       setPushMessage("");
+      await loadPushDevices();
       toast.success("Push notification sent");
     } catch (e) {
       toast.error("Failed to send push", {
@@ -364,12 +512,12 @@ export default function PwaSettings() {
       )}
 
       <div className="flex flex-col sm:flex-row gap-2">
-        <Button
-          size="sm"
-          onClick={install}
-          disabled={installed || !deferredPrompt}
-        >
-          {installed ? "Installed" : "Install app"}
+        <Button size="sm" onClick={install} disabled={installed}>
+          {installed
+            ? "Installed"
+            : isIosSafari || isMacSafari
+              ? "How to install"
+              : "Install app"}
         </Button>
         <Button
           size="sm"
@@ -388,6 +536,13 @@ export default function PwaSettings() {
           Send test notification
         </Button>
       </div>
+      {(isIosSafari || isMacSafari) && !installed && !deferredPrompt && (
+        <p className="text-xs text-muted-foreground mt-2">
+          {isIosSafari
+            ? "iPhone/iPad Safari does not expose an in-app install prompt. Tap Share, then Add to Home Screen."
+            : "Safari on macOS installs this app through the menu bar. Choose File, then Add to Dock."}
+        </p>
+      )}
 
       {pushSupported && (
         <div className="mt-4 space-y-2">
@@ -420,6 +575,84 @@ export default function PwaSettings() {
               Enable push notifications
             </Button>
           )}
+
+          <div className="rounded-md border p-3 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium">Registered devices</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void loadPushDevices()}
+                disabled={pushDevicesLoading}
+              >
+                {pushDevicesLoading ? "Refreshing..." : "Refresh devices"}
+              </Button>
+            </div>
+
+            {pushDevicesLoading ? (
+              <p className="text-xs text-muted-foreground">
+                Loading devices...
+              </p>
+            ) : pushDevices.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No push devices registered yet.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {pushDevices.map((device) => {
+                  const lastSeenMs = new Date(device.updatedAt).getTime();
+                  const stale =
+                    Number.isFinite(lastSeenMs) &&
+                    Date.now() - lastSeenMs >= STALE_PUSH_MS;
+                  const isCurrent =
+                    pushSubscription?.endpoint === device.endpoint;
+
+                  return (
+                    <div
+                      key={device.id}
+                      className="rounded-md border bg-card/50 p-2"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2 min-w-0">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="block max-w-full text-sm font-medium break-all">
+                              {device.endpointHost || "Push endpoint"}
+                            </span>
+                            {isCurrent ? (
+                              <Badge variant="secondary">This device</Badge>
+                            ) : null}
+                            {stale ? (
+                              <Badge variant="outline">
+                                Stale ({STALE_PUSH_DAYS}+ days)
+                              </Badge>
+                            ) : null}
+                          </div>
+                          <p className="text-xs text-muted-foreground break-all">
+                            {device.endpoint}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Last active {formatRelativeTime(device.updatedAt)} ·
+                            Added {formatDateTime(device.createdAt)}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0"
+                          onClick={() => void removePushDevice(device)}
+                          disabled={removeDeviceId === device.id}
+                        >
+                          {removeDeviceId === device.id
+                            ? "Removing..."
+                            : "Remove"}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

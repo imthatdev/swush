@@ -42,7 +42,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const key = decodeURIComponent(slug || "");
-  const { appName, appUrl } = await getPublicRuntimeSettings();
+  const { appName, appUrl, sharingDomain } = await getPublicRuntimeSettings();
   const defaultMetadata = await getDefaultMetadata();
   const isUuid =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -69,8 +69,10 @@ export async function generateMetadata({
   const isAvailable = Boolean(folder[0]?.shareEnabled);
   const isProtected = Boolean(folder[0]?.sharePassword);
   const shareKey = folder[0]?.shareSlug ?? key;
-  const canonical = appUrl ? shareUrl("f", shareKey) : undefined;
-
+  const canonical =
+    appUrl || sharingDomain
+      ? shareUrl("f", shareKey, { appUrl, sharingDomain })
+      : undefined;
   let title = `${appName} • Shared folder`;
   let description = `Open a shared folder on ${appName}.`;
 

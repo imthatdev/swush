@@ -17,10 +17,13 @@
 
 import "server-only";
 
-import type { GenericEndpointContext } from "@better-auth/core";
 import { APIError } from "better-auth";
 import { getServerSettings } from "@/lib/settings";
 import { getSetupStatus } from "@/lib/server/setup";
+
+type RegistrationContext = {
+  path?: string | null;
+} | null;
 
 const REGISTRATION_CLOSED_CODE = "registration_closed";
 
@@ -34,9 +37,7 @@ function isOAuthCallbackPath(path?: string | null) {
   );
 }
 
-export async function ensureSocialSignupAllowed(
-  context: GenericEndpointContext | null,
-) {
+export async function ensureSocialSignupAllowed(context: RegistrationContext) {
   if (!isOAuthCallbackPath(context?.path)) return;
 
   const setup = await getSetupStatus();

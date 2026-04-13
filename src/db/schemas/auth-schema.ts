@@ -57,7 +57,6 @@ export const session = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    impersonatedBy: text("impersonated_by"),
   },
   (table) => [index("session_userId_idx").on(table.userId)],
 );
@@ -111,6 +110,7 @@ export const twoFactor = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    verified: boolean("verified").default(true),
   },
   (table) => [
     index("twoFactor_secret_idx").on(table.secret),
@@ -145,8 +145,10 @@ export const apikey = pgTable(
   "apikey",
   {
     id: text("id").primaryKey(),
+    configId: text("config_id").default("default").notNull(),
     name: text("name"),
     start: text("start"),
+    referenceId: text("reference_id").notNull(),
     prefix: text("prefix"),
     key: text("key").notNull(),
     userId: text("user_id")
@@ -169,6 +171,8 @@ export const apikey = pgTable(
     metadata: text("metadata"),
   },
   (table) => [
+    index("apikey_configId_idx").on(table.configId),
+    index("apikey_referenceId_idx").on(table.referenceId),
     index("apikey_key_idx").on(table.key),
     index("apikey_userId_idx").on(table.userId),
   ],

@@ -81,11 +81,14 @@ export async function generateMetadata({
   params: Params;
 }): Promise<Metadata> {
   const { username } = await params;
-  const { appName, appUrl } = await getPublicRuntimeSettings();
-  const base = appUrl || "";
-  const canonical = base
-    ? shareUrl("l", encodeURIComponent(username))
-    : undefined;
+  const { appName, appUrl, sharingDomain } = await getPublicRuntimeSettings();
+  const canonical =
+    appUrl || sharingDomain
+      ? shareUrl("l", encodeURIComponent(username), {
+          appUrl,
+          sharingDomain,
+        })
+      : undefined;
 
   const title = `${username}’s Watchlist`;
   const description = `See what ${username} is watching movies, shows, and anime with ${appName}. Progress, seasons, and more.`;

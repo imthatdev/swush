@@ -27,6 +27,7 @@ import { formatBytes } from "@/lib/helpers";
 type UserMetrics = {
   totals: {
     files: number;
+    bookmarks: number;
     shortLinks: number;
     tags: number;
     folders: number;
@@ -34,6 +35,7 @@ type UserMetrics = {
   };
   publicTotals: {
     files: number;
+    bookmarks: number;
     shortLinks: number;
   };
   storageBytes: number;
@@ -132,6 +134,11 @@ export default function UserMetricsClient() {
           helper={`${numberFormat.format(metrics.totals.files)} files`}
         />
         <MetricCard
+          label="Bookmarks"
+          value={numberFormat.format(metrics.totals.bookmarks)}
+          helper="Total created"
+        />
+        <MetricCard
           label="Short links"
           value={numberFormat.format(metrics.totals.shortLinks)}
           helper={`${numberFormat.format(metrics.shortLinkClicks)} clicks`}
@@ -152,6 +159,11 @@ export default function UserMetricsClient() {
         <MetricCard
           label="Public files"
           value={numberFormat.format(metrics.publicTotals.files)}
+          helper="Visible in public"
+        />
+        <MetricCard
+          label="Public bookmarks"
+          value={numberFormat.format(metrics.publicTotals.bookmarks)}
           helper="Visible in public"
         />
         <MetricCard

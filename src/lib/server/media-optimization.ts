@@ -25,6 +25,7 @@ import { spawn } from "child_process";
 import sharp from "sharp";
 import ffmpegPath from "ffmpeg-static";
 import { isMedia } from "../mime-types";
+import { applyBackgroundProcessPriority } from "@/lib/server/process-priority";
 
 export type OptimizedMedia = {
   buffer: Buffer;
@@ -105,6 +106,12 @@ function qualityToAudioBitrate(quality: number) {
   return Math.min(320, Math.max(32, bitrate));
 }
 
+function resolveFfmpegThreads() {
+  const parsed = Number(process.env.FFMPEG_THREADS);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 1;
+  return Math.max(1, Math.floor(parsed));
+}
+
 export async function transcodeMediaBuffer(
   buffer: Buffer,
   mimeType: string,
@@ -117,7 +124,7 @@ export async function transcodeMediaBuffer(
     process.env.FFMPEG_PATH?.trim() || (ffmpegPath as string) || "ffmpeg";
 
   const id = randomUUID();
-  const dir = path.join(tmpdir(), "swush-media");
+  const dir = path.join(/*turbopackIgnore: true*/ tmpdir(), "swush-media");
   const inputPath = path.join(dir, `${id}.input`);
   const outputPath = path.join(
     dir,
@@ -127,7 +134,13 @@ export async function transcodeMediaBuffer(
   await mkdir(dir, { recursive: true });
   await writeFile(inputPath, buffer);
 
-  const args: string[] = ["-y", "-i", inputPath];
+  const args: string[] = [
+    "-y",
+    "-threads",
+    String(resolveFfmpegThreads()),
+    "-i",
+    inputPath,
+  ];
   if (isMedia("video", mimeType)) {
     const crf = qualityToCrf(quality);
     args.push(
@@ -152,6 +165,7 @@ export async function transcodeMediaBuffer(
 
   await new Promise<void>((resolve, reject) => {
     const proc = spawn(ffmpegCmd, args, { stdio: "ignore" });
+    applyBackgroundProcessPriority(proc);
     proc.on("error", reject);
     proc.on("close", (code) => {
       if (code === 0) resolve();

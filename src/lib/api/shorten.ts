@@ -256,6 +256,7 @@ export async function listShortLinks(params: {
       or(
         ilike(shortLinks.description, pattern),
         ilike(shortLinks.originalUrl, pattern),
+        sql`array_to_string(${shortLinks.tags}, ',') ILIKE ${pattern}`,
       ),
     );
   }

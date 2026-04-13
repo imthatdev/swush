@@ -107,24 +107,117 @@ export async function fetchPageMeta(targetUrl: string): Promise<{
 }
 
 export function getAppOrigin(appUrl?: string | null) {
+  return resolveShareOrigin({ appUrl });
+}
+
+type BuildShareUrlOptions = {
+  appUrl?: string | null;
+  sharingDomain?: string | null;
+  query?:
+    | URLSearchParams
+    | Record<string, string | number | boolean | null | undefined>;
+};
+
+type ShareUrlOptions = {
+  anonymous?: boolean;
+  appUrl?: string | null;
+  sharingDomain?: string | null;
+};
+
+function normalizeHttpOrigin(value?: string | null) {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) return "";
+
+  const withProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+
+  try {
+    const parsed = new URL(withProtocol);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return "";
+    }
+    return parsed.origin;
+  } catch {
+    return "";
+  }
+}
+
+export function normalizeSharingDomain(value?: string | null) {
+  return normalizeHttpOrigin(value);
+}
+
+function getRuntimeConfigOrigin(key: "appUrl" | "sharingDomain") {
+  if (typeof document === "undefined") return "";
+  const body = document.body;
+  if (!body) return "";
+
+  const raw =
+    key === "sharingDomain" ? body.dataset.sharingDomain : body.dataset.appUrl;
+  return normalizeHttpOrigin(raw);
+}
+
+function resolveShareOrigin(options?: {
+  appUrl?: string | null;
+  sharingDomain?: string | null;
+}) {
+  const sharingDomain =
+    normalizeHttpOrigin(options?.sharingDomain) ||
+    getRuntimeConfigOrigin("sharingDomain");
+  if (sharingDomain) return sharingDomain;
+
+  const appOrigin =
+    normalizeHttpOrigin(options?.appUrl) || getRuntimeConfigOrigin("appUrl");
+  if (appOrigin) return appOrigin;
+
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
-  return appUrl || "";
+
+  return "";
+}
+
+export function buildShareUrl(path: string, options?: BuildShareUrlOptions) {
+  const trimmedPath = path.trim();
+  if (!trimmedPath) return "";
+
+  const normalizedPath = trimmedPath.startsWith("/")
+    ? trimmedPath
+    : `/${trimmedPath}`;
+  const base = resolveShareOrigin(options);
+  const output = base ? `${base}${normalizedPath}` : normalizedPath;
+
+  const query = options?.query;
+  if (!query) return output;
+
+  const params =
+    query instanceof URLSearchParams
+      ? new URLSearchParams(query)
+      : new URLSearchParams();
+  if (!(query instanceof URLSearchParams)) {
+    for (const [key, value] of Object.entries(query)) {
+      if (value === null || value === undefined) continue;
+      params.set(key, String(value));
+    }
+  }
+
+  const suffix = params.toString();
+  return suffix ? `${output}?${suffix}` : output;
 }
 
 export function shareUrl(
   page: string,
   slug: string | null | undefined,
-  options?: { anonymous?: boolean },
+  options?: ShareUrlOptions,
 ) {
   if (!slug) return "";
-  const base = getAppOrigin();
-  const path = base ? `${base}/${page}/${slug}` : `/${page}/${slug}`;
   const params = new URLSearchParams();
   if (options?.anonymous) params.set("anon", "1");
-  const suffix = params.toString();
-  return suffix ? `${path}?${suffix}` : path;
+  return buildShareUrl(`/${page}/${slug}`, {
+    appUrl: options?.appUrl,
+    sharingDomain: options?.sharingDomain,
+    query: params,
+  });
 }
 
 export function randomPassword(length = 16) {

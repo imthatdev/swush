@@ -20,10 +20,43 @@ import { serverSettings } from "@/db/schemas/core-schema";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { DBServerSettings } from "@/types/schema";
+import { getCached, setCached, clearCached } from "@/lib/server/ttl-cache";
+import { redisDelete, redisGetJson, redisSetJson } from "@/lib/server/redis";
+import { normalizeSharingDomain } from "@/lib/api/helpers";
 
 export type ServerSettings = DBServerSettings;
 
 const SETTINGS_ID = 1 as const;
+const SERVER_SETTINGS_CACHE_KEY = "settings:server";
+const SERVER_SETTINGS_CACHE_TTL_MS = (() => {
+  const parsed = Number(process.env.SERVER_SETTINGS_CACHE_TTL_MS);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 30_000;
+  return Math.floor(parsed);
+})();
+
+async function readServerSettingsFromDb(): Promise<ServerSettings> {
+  await ensureSettingsRow();
+
+  const latest = await db.query.serverSettings.findFirst({
+    where: eq(serverSettings.id, SETTINGS_ID),
+  });
+
+  return { ...latest } as ServerSettings;
+}
+
+async function setServerSettingsCache(value: ServerSettings) {
+  setCached(SERVER_SETTINGS_CACHE_KEY, value, SERVER_SETTINGS_CACHE_TTL_MS);
+  await redisSetJson(
+    SERVER_SETTINGS_CACHE_KEY,
+    value,
+    SERVER_SETTINGS_CACHE_TTL_MS,
+  );
+}
+
+async function clearServerSettingsCache() {
+  clearCached(SERVER_SETTINGS_CACHE_KEY);
+  await redisDelete(SERVER_SETTINGS_CACHE_KEY);
+}
 
 async function ensureSettingsRow() {
   await db
@@ -33,7 +66,15 @@ async function ensureSettingsRow() {
 }
 
 function buildPayload(input: Partial<ServerSettings>) {
+  const hasSharingDomain = Object.prototype.hasOwnProperty.call(
+    input,
+    "sharingDomain",
+  );
+
   const payload: Partial<typeof serverSettings.$inferInsert> = {
+    sharingDomain: hasSharingDomain
+      ? normalizeSharingDomain(input.sharingDomain) || null
+      : undefined,
     maxUploadMb: input.maxUploadMb,
     maxFilesPerUpload: input.maxFilesPerUpload,
     allowPublicRegistration: input.allowPublicRegistration,
@@ -47,6 +88,8 @@ function buildPayload(input: Partial<ServerSettings>) {
     filesLimitAdmin: input.filesLimitAdmin,
     shortLinksLimitUser: input.shortLinksLimitUser,
     shortLinksLimitAdmin: input.shortLinksLimitAdmin,
+    bookmarksLimitUser: input.bookmarksLimitUser,
+    bookmarksLimitAdmin: input.bookmarksLimitAdmin,
 
     allowedMimePrefixes: input.allowedMimePrefixes ?? null,
     disallowedExtensions: input.disallowedExtensions ?? null,
@@ -94,13 +137,25 @@ export function isUsernamePreserved(
 }
 
 export async function getServerSettings(): Promise<ServerSettings> {
-  await ensureSettingsRow();
+  const memoryCached = getCached<ServerSettings>(SERVER_SETTINGS_CACHE_KEY);
+  if (memoryCached) return memoryCached;
 
-  const latest = await db.query.serverSettings.findFirst({
-    where: eq(serverSettings.id, SETTINGS_ID),
-  });
+  const redisCached = await redisGetJson<ServerSettings>(
+    SERVER_SETTINGS_CACHE_KEY,
+  );
+  if (redisCached) {
+    setCached(
+      SERVER_SETTINGS_CACHE_KEY,
+      redisCached,
+      SERVER_SETTINGS_CACHE_TTL_MS,
+    );
+    return redisCached;
+  }
 
-  return { ...latest } as ServerSettings;
+  const latest = await readServerSettingsFromDb();
+  await setServerSettingsCache(latest);
+
+  return latest;
 }
 
 export async function updateServerSettings(input: Partial<ServerSettings>) {
@@ -119,5 +174,8 @@ export async function updateServerSettings(input: Partial<ServerSettings>) {
       .where(eq(serverSettings.id, SETTINGS_ID));
   }
 
-  return getServerSettings();
+  await clearServerSettingsCache();
+  const latest = await readServerSettingsFromDb();
+  await setServerSettingsCache(latest);
+  return latest;
 }

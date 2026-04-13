@@ -19,6 +19,7 @@ export type AdminMetricsDaily = {
   date: string;
   users: number;
   files: number;
+  bookmarks: number;
   storageBytes: number;
   shortLinks: number;
 };
@@ -29,6 +30,7 @@ export type AdminMetricsTotals = {
   admins: number;
   owners: number;
   files: number;
+  bookmarks: number;
   shortLinks: number;
   tags: number;
   folders: number;

@@ -33,14 +33,17 @@ import { sendBanLiftedNotification, sendBanNotification } from "@/lib/email";
 import { z } from "zod";
 import { getServerSettings, updateServerSettings } from "@/lib/settings";
 import { APIError } from "better-auth";
+import { normalizeSharingDomain } from "@/lib/api/helpers";
 
 const LimitsSchema = z.object({
   maxStorageMb: z.number().int().min(0).nullable().optional(),
   maxUploadMb: z.number().int().min(0).nullable().optional(),
   filesLimit: z.number().int().min(0).nullable().optional(),
+  bookmarksLimit: z.number().int().min(0).nullable().optional(),
   shortLinksLimit: z.number().int().min(0).nullable().optional(),
   allowRemoteUpload: z.boolean().nullable().optional(),
   allowFiles: z.boolean().nullable().optional(),
+  allowBookmarks: z.boolean().nullable().optional(),
   allowShortlinks: z.boolean().nullable().optional(),
   allowWatchlist: z.boolean().nullable().optional(),
   disableApiTokens: z.boolean().optional(),
@@ -92,11 +95,27 @@ export async function adminGetUsersList() {
     .from(shortLinks)
     .groupBy(shortLinks.userId);
 
+  let bookmarksAgg: { userId: string; bookmarksCount: number }[] = [];
+  try {
+    const { bookmarks } = await import("@/db/schemas");
+    bookmarksAgg = await db
+      .select({
+        userId: bookmarks.userId,
+        bookmarksCount: sql<number>`count(*)`,
+      })
+      .from(bookmarks)
+      .groupBy(bookmarks.userId);
+  } catch {}
+
   const linkMap = new Map(
     linkAgg.map((r) => [
       r.userId,
       { links: Number(r.linksCount), clicks: Number(r.clicks) },
     ]),
+  );
+
+  const bookmarksMap = new Map(
+    bookmarksAgg.map((r) => [r.userId, Number(r.bookmarksCount)]),
   );
 
   const sessionAgg = await db
@@ -125,10 +144,12 @@ export async function adminGetUsersList() {
       maxStorageMb: userInfo.maxStorageMb,
       maxUploadMb: userInfo.maxUploadMb,
       filesLimit: userInfo.filesLimit,
+      bookmarksLimit: userInfo.bookmarksLimit,
       shortLinksLimit: userInfo.shortLinksLimit,
       twoFactor: user.twoFactorEnabled,
       allowRemoteUpload: userInfo.allowRemoteUpload,
       allowFiles: userInfo.allowFiles,
+      allowBookmarks: userInfo.allowBookmarks,
       allowShortlinks: userInfo.allowShortlinks,
       allowWatchlist: userInfo.allowWatchlist,
       disableApiTokens: userInfo.disableApiTokens,
@@ -142,6 +163,7 @@ export async function adminGetUsersList() {
 
   return rows.map((u) => {
     const f = fileMap.get(u.id) ?? { files: 0, storageBytes: 0 };
+    const bookmarksCount = bookmarksMap.get(u.id) ?? 0;
     const l = linkMap.get(u.id) ?? { links: 0, clicks: 0 };
 
     const lastLoginAt = sessionMap.get(u.id) ?? null;
@@ -168,9 +190,11 @@ export async function adminGetUsersList() {
       maxStorageMb: zeroToNull(u.maxStorageMb),
       maxUploadMb: zeroToNull(u.maxUploadMb),
       filesLimit: zeroToNull(u.filesLimit),
+      bookmarksLimit: zeroToNull(u.bookmarksLimit),
       shortLinksLimit: zeroToNull(u.shortLinksLimit),
       usage: {
         files: f.files,
+        bookmarks: bookmarksCount,
         storageBytes: f.storageBytes,
         links: l.links,
         clicks: l.clicks,
@@ -179,6 +203,7 @@ export async function adminGetUsersList() {
       allowRemoteUpload: u.allowRemoteUpload,
 
       allowFiles: u.allowFiles,
+      allowBookmarks: u.allowBookmarks,
       allowShortlinks: u.allowShortlinks,
 
       disableApiTokens: !!u.disableApiTokens,
@@ -202,10 +227,12 @@ export async function adminGetUser(id: string) {
       maxStorageMb: userInfo.maxStorageMb,
       maxUploadMb: userInfo.maxUploadMb,
       filesLimit: userInfo.filesLimit,
+      bookmarksLimit: userInfo.bookmarksLimit,
       shortLinksLimit: userInfo.shortLinksLimit,
       twoFactor: user.twoFactorEnabled,
       allowRemoteUpload: userInfo.allowRemoteUpload,
       allowFiles: userInfo.allowFiles,
+      allowBookmarks: userInfo.allowBookmarks,
       allowShortlinks: userInfo.allowShortlinks,
       allowWatchlist: userInfo.allowWatchlist,
       disableApiTokens: userInfo.disableApiTokens,
@@ -243,9 +270,11 @@ export async function adminGetUser(id: string) {
     maxStorageMb: zeroToNull(row.maxStorageMb),
     maxUploadMb: zeroToNull(row.maxUploadMb),
     filesLimit: zeroToNull(row.filesLimit),
+    bookmarksLimit: zeroToNull(row.bookmarksLimit),
     shortLinksLimit: zeroToNull(row.shortLinksLimit),
     allowRemoteUpload: row.allowRemoteUpload,
     allowFiles: row.allowFiles,
+    allowBookmarks: row.allowBookmarks,
     allowShortlinks: row.allowShortlinks,
     allowWatchlist: row.allowWatchlist,
     disableApiTokens: !!row.disableApiTokens,
@@ -355,6 +384,7 @@ export async function adminUpdateUser(
       key === "maxStorageMb" ||
       key === "maxUploadMb" ||
       key === "filesLimit" ||
+      key === "bookmarksLimit" ||
       key === "shortLinksLimit"
     ) {
       update[key] = normalizeNumeric(val);
@@ -370,6 +400,9 @@ export async function adminUpdateUser(
         p.allowRemoteUpload === undefined ? null : p.allowRemoteUpload;
     } else if (key === "allowFiles") {
       update.allowFiles = p.allowFiles === undefined ? null : p.allowFiles;
+    } else if (key === "allowBookmarks") {
+      update.allowBookmarks =
+        p.allowBookmarks === undefined ? null : p.allowBookmarks;
     } else if (key === "allowShortlinks") {
       update.allowShortlinks =
         p.allowShortlinks === undefined ? null : p.allowShortlinks;
@@ -478,6 +511,7 @@ const StringArray = z
   .transform((arr) => arr.map((s) => s.trim()).filter(Boolean));
 
 const SettingsSchema = z.object({
+  sharingDomain: z.union([z.string().trim().max(255), z.null()]).optional(),
   maxUploadMb: z.number().int().min(1).max(102400),
   maxFilesPerUpload: z.number().int().min(1).max(1000),
   allowPublicRegistration: z.boolean(),
@@ -530,6 +564,7 @@ export async function adminGetSettings() {
   const settings = await getServerSettings();
   return {
     id: settings.id,
+    sharingDomain: normalizeSharingDomain(settings.sharingDomain) || null,
     allowPublicRegistration: settings.allowPublicRegistration,
     passwordPolicyMinLength: settings.passwordPolicyMinLength,
     maxUploadMb: settings.maxUploadMb,
@@ -569,8 +604,16 @@ export async function adminPutSettings(data: unknown) {
   const normalize = <T extends string[] | null | undefined>(v: T) =>
     v && Array.isArray(v) && v.length === 0 ? null : (v ?? null);
 
+  const normalizedSharingDomain =
+    parsed.data.sharingDomain === undefined
+      ? undefined
+      : normalizeSharingDomain(parsed.data.sharingDomain) || null;
+
   const update: Record<string, unknown> = {
     ...parsed.data,
+    ...(normalizedSharingDomain === undefined
+      ? {}
+      : { sharingDomain: normalizedSharingDomain }),
     allowedMimePrefixes: normalize(parsed.data.allowedMimePrefixes),
     disallowedExtensions: normalize(parsed.data.disallowedExtensions),
     preservedUsernames: normalize(parsed.data.preservedUsernames),
@@ -671,6 +714,7 @@ const ClearOptionsSchema = z.object({
   filesAll: z.boolean().optional(),
   filesExceptFavorites: z.boolean().optional(),
   links: z.boolean().optional(),
+  bookmarks: z.boolean().optional(),
   apiTokens: z.boolean().optional(),
 });
 
@@ -733,6 +777,17 @@ export async function adminClearUserData(
         cause: e,
       });
     }
+  }
+
+  try {
+    if (opts.bookmarks) {
+      const { bookmarks } = await import("@/db/schemas");
+      await db.delete(bookmarks).where(eq(bookmarks.userId, targetUserId));
+    }
+  } catch (e) {
+    console.warn("bookmarks clear failed", e);
+    if (opts.bookmarks)
+      return { ok: false as const, error: "Failed to clear bookmarks" };
   }
 
   return { ok: true as const };

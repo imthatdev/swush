@@ -57,12 +57,15 @@ import {
   adminUpdateSettings,
   adminListImportRuns,
   adminClearImportRuns,
+  adminGetQueueHealth,
 } from "@/lib/client/admin";
 import type { AdminJobName, AdminJobRun } from "@/types/admin-jobs";
+import type { AdminQueueHealth } from "@/types/admin-queue-health";
 import { PaginationFooter } from "../Shared/PaginationFooter";
 import { HelpTip } from "./Docs/HelpTip";
 
 const SettingsSchema = z.object({
+  sharingDomain: z.string().max(255).optional(),
   maxUploadMb: z.coerce.number().int().min(1).max(102400),
   maxFilesPerUpload: z.coerce.number().int().min(1).max(1000),
   allowPublicRegistration: z.boolean(),
@@ -92,6 +95,8 @@ const SettingsSchema = z.object({
 
   filesLimitUser: z.coerce.number().int().min(1).max(10000).nullable(),
   filesLimitAdmin: z.coerce.number().int().min(1).max(10000).nullable(),
+  bookmarksLimitUser: z.coerce.number().int().min(1).max(10000).nullable(),
+  bookmarksLimitAdmin: z.coerce.number().int().min(1).max(10000).nullable(),
   shortLinksLimitUser: z.coerce.number().int().min(1).max(10000).nullable(),
   shortLinksLimitAdmin: z.coerce.number().int().min(1).max(10000).nullable(),
 
@@ -137,6 +142,11 @@ const JOBS: Array<{
     supportsLimit: true,
   },
   {
+    id: "pwa-subscription-cleanup",
+    label: "PWA subscription cleanup",
+    description: "Remove push device subscriptions inactive for 30+ days.",
+  },
+  {
     id: "steam-playtime",
     label: "Steam playtime sync",
     description: "Refresh playtime stats from Steam.",
@@ -153,11 +163,36 @@ const JOB_LABELS = JOBS.reduce(
   {} as Record<AdminJobName, string>,
 );
 
+const numberFormat = new Intl.NumberFormat("en", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+const percentFormat = new Intl.NumberFormat("en", {
+  style: "percent",
+  maximumFractionDigits: 1,
+});
+
 const strArrParser = (s: string) =>
   s
     .split(",")
     .map((x) => x.trim())
     .filter(Boolean);
+
+function formatQueueSeconds(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "0s";
+  if (value < 1) return `${Math.round(value * 1000)}ms`;
+  if (value < 60)
+    return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)}s`;
+
+  const totalMinutes = Math.floor(value / 60);
+  const seconds = Math.round(value % 60);
+  if (totalMinutes < 60) return `${totalMinutes}m ${seconds}s`;
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes}m`;
+}
 
 export default function AdminSettingsClient({
   initialValues,
@@ -175,6 +210,7 @@ export default function AdminSettingsClient({
   const form = useForm<FormValues>({
     resolver: zodResolver(SettingsSchema) as unknown as Resolver<FormValues>,
     defaultValues: {
+      sharingDomain: initialValues.sharingDomain ?? "",
       maxUploadMb: initialValues.maxUploadMb,
       maxFilesPerUpload: initialValues.maxFilesPerUpload,
       allowPublicRegistration: initialValues.allowPublicRegistration,
@@ -187,6 +223,8 @@ export default function AdminSettingsClient({
       adminMaxStorageMb: initialValues.adminMaxStorageMb,
       filesLimitUser: initialValues.filesLimitUser,
       filesLimitAdmin: initialValues.filesLimitAdmin,
+      bookmarksLimitUser: initialValues.bookmarksLimitUser,
+      bookmarksLimitAdmin: initialValues.bookmarksLimitAdmin,
       shortLinksLimitUser: initialValues.shortLinksLimitUser,
       shortLinksLimitAdmin: initialValues.shortLinksLimitAdmin,
 
@@ -210,6 +248,12 @@ export default function AdminSettingsClient({
   const [jobsLoading, setJobsLoading] = React.useState(false);
   const [jobsRefreshing, setJobsRefreshing] = React.useState(false);
   const [jobRunning, setJobRunning] = React.useState<AdminJobName | null>(null);
+  const [queueHealth, setQueueHealth] = React.useState<AdminQueueHealth | null>(
+    null,
+  );
+  const [queueHealthLoading, setQueueHealthLoading] = React.useState(false);
+  const [queueHealthRefreshing, setQueueHealthRefreshing] =
+    React.useState(false);
   const [mediaLimit, setMediaLimit] = React.useState(10);
   const [jobsPage, setJobsPage] = React.useState(1);
   const [jobsPageSize] = React.useState(10);
@@ -321,6 +365,22 @@ export default function AdminSettingsClient({
     [importsPage, importsPageSize],
   );
 
+  const loadQueueHealth = React.useCallback(async (silent = false) => {
+    if (!silent) setQueueHealthLoading(true);
+    if (silent) setQueueHealthRefreshing(true);
+    try {
+      const data = await adminGetQueueHealth();
+      setQueueHealth(data);
+    } catch (error) {
+      toast.error("Failed to load queue health", {
+        description: (error as Error).message,
+      });
+    } finally {
+      if (!silent) setQueueHealthLoading(false);
+      if (silent) setQueueHealthRefreshing(false);
+    }
+  }, []);
+
   React.useEffect(() => {
     if (activeTab !== "jobs") return;
     void loadJobRuns();
@@ -330,6 +390,64 @@ export default function AdminSettingsClient({
     if (activeTab !== "jobs") return;
     void loadImportRuns();
   }, [activeTab, loadImportRuns, importsPage]);
+
+  React.useEffect(() => {
+    if (activeTab !== "jobs") return;
+    void loadQueueHealth();
+  }, [activeTab, loadQueueHealth]);
+
+  const queueSummary = React.useMemo(() => {
+    if (!queueHealth) {
+      return {
+        queueDepth: 0,
+        delayed: 0,
+        processing: 0,
+        activeWorkers: 0,
+        deadLetter: 0,
+        weightedWaitAvgSec: 0,
+        waitP95Sec: 0,
+        failureRate24h: 0,
+      };
+    }
+
+    let queueDepth = 0;
+    let delayed = 0;
+    let processing = 0;
+    let activeWorkers = 0;
+    let deadLetter = 0;
+    let waitWeightTotal = 0;
+    let weightedWaitTotal = 0;
+    let waitP95Sec = 0;
+    let failed24h = 0;
+    let succeeded24h = 0;
+
+    for (const row of queueHealth.queues) {
+      queueDepth += row.queueDepth;
+      delayed += row.delayed;
+      processing += row.processing;
+      activeWorkers += row.activeWorkers;
+      deadLetter += row.deadLetter;
+      waitWeightTotal += row.queueDepth;
+      weightedWaitTotal += row.waitAvgSec * row.queueDepth;
+      waitP95Sec = Math.max(waitP95Sec, row.waitP95Sec);
+      failed24h += row.failed24h;
+      succeeded24h += row.succeeded24h;
+    }
+
+    const denominator = failed24h + succeeded24h;
+
+    return {
+      queueDepth,
+      delayed,
+      processing,
+      activeWorkers,
+      deadLetter,
+      weightedWaitAvgSec:
+        waitWeightTotal > 0 ? weightedWaitTotal / waitWeightTotal : 0,
+      waitP95Sec,
+      failureRate24h: denominator > 0 ? failed24h / denominator : 0,
+    };
+  }, [queueHealth]);
 
   const runJob = async (job: AdminJobName) => {
     if (jobRunning) return;
@@ -437,14 +555,19 @@ export default function AdminSettingsClient({
     try {
       type Payload = Omit<
         FormValues,
-        "allowedMimePrefixes" | "disallowedExtensions" | "preservedUsernames"
+        | "sharingDomain"
+        | "allowedMimePrefixes"
+        | "disallowedExtensions"
+        | "preservedUsernames"
       > & {
+        sharingDomain: string | null;
         allowedMimePrefixes: string[] | null;
         disallowedExtensions: string[] | null;
         preservedUsernames: string[] | null;
       };
 
       const {
+        sharingDomain,
         allowedMimePrefixes: amp,
         disallowedExtensions: dex,
         preservedUsernames: pun,
@@ -453,6 +576,7 @@ export default function AdminSettingsClient({
 
       const payload: Payload = {
         ...rest,
+        sharingDomain: sharingDomain?.trim() ? sharingDomain.trim() : null,
         allowedMimePrefixes: amp ? strArrParser(amp) : null,
         disallowedExtensions: dex ? strArrParser(dex) : null,
         preservedUsernames: pun ? strArrParser(pun) : null,
@@ -515,6 +639,27 @@ export default function AdminSettingsClient({
                   })
                 }
               />
+            </Card>
+
+            <Card title="Share Links">
+              <Grid cols={1}>
+                <Field
+                  label={
+                    <span className="inline-flex items-center">
+                      Sharing domain
+                      <HelpTip text="Optional custom domain used for all generated share URLs (files, short links, recipes, snippets, bookmarks, notes). Example: short.link or https://short.link" />
+                    </span>
+                  }
+                >
+                  <Input
+                    placeholder="short.link"
+                    {...form.register("sharingDomain")}
+                  />
+                </Field>
+                <p className="text-xs text-muted-foreground">
+                  Leave empty to use the default app domain.
+                </p>
+              </Grid>
             </Card>
 
             <Card title="Sponsorship">
@@ -748,6 +893,26 @@ export default function AdminSettingsClient({
                 </div>
 
                 <div className="grid gap-3 rounded-md border p-3">
+                  <div className="text-sm font-medium">Bookmarks</div>
+                  <Grid cols={2}>
+                    <Field label="User limit">
+                      <Input
+                        type="number"
+                        placeholder="1>"
+                        {...form.register("bookmarksLimitUser")}
+                      />
+                    </Field>
+                    <Field label="Admin limit">
+                      <Input
+                        type="number"
+                        placeholder="1>"
+                        {...form.register("bookmarksLimitAdmin")}
+                      />
+                    </Field>
+                  </Grid>
+                </div>
+
+                <div className="grid gap-3 rounded-md border p-3">
                   <div className="text-sm font-medium">Short links</div>
                   <Grid cols={2}>
                     <Field label="User limit">
@@ -819,6 +984,177 @@ export default function AdminSettingsClient({
           </TabsContent>
 
           <TabsContent value="jobs" className="space-y-6">
+            <Card
+              title={
+                <span className="inline-flex items-center gap-2">
+                  Queue health
+                  {queueHealth ? (
+                    <Badge variant="outline">
+                      Runner: {queueHealth.runnerRole}
+                    </Badge>
+                  ) : null}
+                </span>
+              }
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">
+                  Live queue depth, wait time, active workers, and failure
+                  rates.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void loadQueueHealth(true)}
+                  disabled={queueHealthRefreshing}
+                >
+                  <IconRefresh className="h-4 w-4" />
+                  {queueHealthRefreshing ? "Refreshing..." : "Refresh"}
+                </Button>
+              </div>
+
+              {queueHealthLoading && !queueHealth ? (
+                <div className="text-sm text-muted-foreground">
+                  Loading queue health...
+                </div>
+              ) : queueHealth ? (
+                <>
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">
+                        Queue depth
+                      </div>
+                      <div className="text-xl font-semibold tracking-tight">
+                        {numberFormat.format(queueSummary.queueDepth)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {numberFormat.format(queueSummary.delayed)} delayed
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">
+                        Wait time
+                      </div>
+                      <div className="text-xl font-semibold tracking-tight">
+                        {formatQueueSeconds(queueSummary.weightedWaitAvgSec)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        p95 {formatQueueSeconds(queueSummary.waitP95Sec)}
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">
+                        Active workers
+                      </div>
+                      <div className="text-xl font-semibold tracking-tight">
+                        {numberFormat.format(queueSummary.activeWorkers)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {numberFormat.format(queueSummary.processing)}{" "}
+                        processing
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border p-3">
+                      <div className="text-xs text-muted-foreground">
+                        Failure rate (24h)
+                      </div>
+                      <div className="text-xl font-semibold tracking-tight">
+                        {percentFormat.format(queueSummary.failureRate24h)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {numberFormat.format(queueSummary.deadLetter)}{" "}
+                        dead-letter
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    <span>
+                      Adaptive:{" "}
+                      {queueHealth.workload.adaptiveEnabled ? "on" : "off"}
+                    </span>
+                    <span>
+                      CPU {queueHealth.workload.cpu.inUse}/
+                      {queueHealth.workload.cpu.effectiveCapacity}
+                    </span>
+                    <span>
+                      IO {queueHealth.workload.io.inUse}/
+                      {queueHealth.workload.io.effectiveCapacity}
+                    </span>
+                    <span>
+                      Event loop p95{" "}
+                      {Math.round(
+                        queueHealth.workload.signals.eventLoopLagP95Ms,
+                      )}
+                      ms
+                    </span>
+                    <span>
+                      API p95{" "}
+                      {Math.round(queueHealth.workload.signals.apiLatencyP95Ms)}
+                      ms
+                    </span>
+                  </div>
+
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Queue</TableHead>
+                          <TableHead>Depth</TableHead>
+                          <TableHead>Delayed</TableHead>
+                          <TableHead>Processing</TableHead>
+                          <TableHead>Workers</TableHead>
+                          <TableHead>Wait avg/p95</TableHead>
+                          <TableHead>Failure (24h)</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {queueHealth.queues.map((row) => (
+                          <TableRow key={row.key}>
+                            <TableCell className="font-medium">
+                              {row.label}
+                            </TableCell>
+                            <TableCell>
+                              {numberFormat.format(row.queueDepth)}
+                            </TableCell>
+                            <TableCell>
+                              {numberFormat.format(row.delayed)}
+                            </TableCell>
+                            <TableCell>
+                              {numberFormat.format(row.processing)}
+                            </TableCell>
+                            <TableCell>
+                              {numberFormat.format(row.activeWorkers)}
+                            </TableCell>
+                            <TableCell>
+                              {formatQueueSeconds(row.waitAvgSec)} /{" "}
+                              {formatQueueSeconds(row.waitP95Sec)}
+                            </TableCell>
+                            <TableCell>
+                              <span>
+                                {percentFormat.format(row.failureRate24h)}
+                              </span>
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                ({row.failed24h}/
+                                {row.failed24h + row.succeeded24h})
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  Queue health is unavailable.
+                </div>
+              )}
+            </Card>
+
             <Card title="Run maintenance jobs">
               <div className="grid gap-3">
                 {JOBS.map((job) => (

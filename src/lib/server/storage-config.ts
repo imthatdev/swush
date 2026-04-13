@@ -29,6 +29,8 @@ export type StorageConfig = {
     forcePathStyle: boolean;
     accessKeyId?: string;
     secretAccessKey?: string;
+    maxSockets: number;
+    socketAcquisitionWarningTimeoutMs: number;
   };
 };
 
@@ -46,6 +48,14 @@ function envUploadRoot() {
   return process.env.UPLOAD_ROOT || "uploads";
 }
 
+function envPositiveInt(value: string | undefined, fallback: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return Math.floor(parsed);
+}
+
 export function storageDefaultsFromEnv() {
   return {
     storageDriver: envDriver(),
@@ -57,6 +67,11 @@ export function storageDefaultsFromEnv() {
       (process.env.S3_FORCE_PATH_STYLE || "true").toLowerCase() === "true",
     s3AccessKeyId: process.env.S3_ACCESS_KEY_ID?.trim() || "",
     s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY?.trim() || "",
+    s3MaxSockets: envPositiveInt(process.env.S3_MAX_SOCKETS, 256),
+    s3SocketAcquisitionWarningTimeoutMs: envPositiveInt(
+      process.env.S3_SOCKET_ACQUISITION_WARNING_TIMEOUT_MS,
+      10_000,
+    ),
   };
 }
 
@@ -88,6 +103,9 @@ export async function getStorageConfig(): Promise<StorageConfig> {
       forcePathStyle: envDefaults.s3ForcePathStyle,
       accessKeyId,
       secretAccessKey,
+      maxSockets: envDefaults.s3MaxSockets,
+      socketAcquisitionWarningTimeoutMs:
+        envDefaults.s3SocketAcquisitionWarningTimeoutMs,
     },
   };
   cachedAt = now;

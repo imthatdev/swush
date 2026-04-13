@@ -58,6 +58,7 @@ import {
 } from "@/lib/server/max-views";
 import { runVirusScanIfEnabled, VirusScanError } from "@/lib/server/virus-scan";
 import { emitWebhookEvent } from "@/lib/server/integrations/webhooks";
+import { buildShareUrl } from "@/lib/api/helpers";
 
 type UploadUser = {
   id: string;
@@ -304,8 +305,7 @@ export async function uploadFileForUser(
 
     if (
       effectiveMime.startsWith("video/") ||
-      (effectiveMime.startsWith("image/") &&
-        effectiveMime !== "image/svg+xml")
+      (effectiveMime.startsWith("image/") && effectiveMime !== "image/svg+xml")
     ) {
       const previewJobId = await enqueuePreviewJob({
         userId: user.id,
@@ -340,6 +340,11 @@ export async function uploadFileForUser(
       incomingNewTagNames,
     });
 
+    const fileUrl = buildShareUrl(`/x/${row.slug}`, {
+      appUrl: req.nextUrl.origin,
+      sharingDomain: settings.sharingDomain,
+    });
+
     setImmediate(() => {
       void emitWebhookEvent({
         userId: user.id,
@@ -352,7 +357,7 @@ export async function uploadFileForUser(
           size: row.size,
           isPublic: row.isPublic,
           createdAt: row.createdAt,
-          url: `${req.nextUrl.origin}/x/${row.slug}`,
+          url: fileUrl,
         },
       }).catch(() => {});
     });
@@ -374,7 +379,7 @@ export async function uploadFileForUser(
         createdAt: row.createdAt,
         folder: incomingFolderName || null,
         tags: responseTags,
-        url: `${req.nextUrl.origin}/x/${row.slug}`,
+        url: fileUrl,
       },
     };
   } catch (err) {

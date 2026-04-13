@@ -20,6 +20,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
+  IconBookmarkPlus,
   IconCopy,
   IconHash,
   IconLoader2,
@@ -80,8 +81,6 @@ const HIDDEN_TYPES = new Set([
   "notes",
   "snippet",
   "snippets",
-  "bookmark",
-  "bookmarks",
   "recipe",
   "recipes",
   "game",
@@ -196,6 +195,7 @@ function savePins(next: Record<string, SearchItem>) {
 function normalizeTypeToken(raw: string) {
   const token = raw.toLowerCase();
   if (token.startsWith("file")) return "file";
+  if (token.startsWith("bookmark")) return "bookmark";
   if (token.startsWith("short")) return "shortlink";
   return "";
 }
@@ -635,6 +635,18 @@ export default function GlobalCommand() {
               <span className="truncate w-full flex gap-2 items-center">
                 <IconHash />
                 Open short links
+              </span>
+            </CommandItem>
+            <CommandItem
+              value="Quick add bookmark"
+              onSelect={() => {
+                router.push("/bookmarks?new=1");
+                setOpen(false);
+              }}
+            >
+              <span className="truncate w-full flex gap-2 items-center">
+                <IconBookmarkPlus />
+                Add a bookmark
               </span>
             </CommandItem>
           </CommandGroup>

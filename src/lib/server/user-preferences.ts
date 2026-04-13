@@ -42,6 +42,8 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   defaultUploadVisibility: "private",
   defaultUploadFolder: null,
   defaultUploadTags: [],
+  defaultBookmarkVisibility: "private",
+  defaultBookmarkTags: [],
   defaultShortlinkVisibility: "private",
   defaultShortlinkTags: [],
   defaultShortlinkMaxClicks: null,
@@ -50,6 +52,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   rememberSettingsTab: true,
   lastSettingsTab: "display",
   sizeFormat: "auto",
+  featureBookmarksEnabled: true,
   featureFilesEnabled: true,
   featureShortlinksEnabled: true,
   featureWatchlistEnabled: true,
@@ -128,6 +131,11 @@ function normalizePreferences(
     ]),
     defaultUploadFolder: toTrim(input.defaultUploadFolder) ?? null,
     defaultUploadTags: toStringArray(input.defaultUploadTags),
+    defaultBookmarkVisibility: toEnum(input.defaultBookmarkVisibility, [
+      "private",
+      "public",
+    ]),
+    defaultBookmarkTags: toStringArray(input.defaultBookmarkTags),
     defaultShortlinkVisibility: toEnum(input.defaultShortlinkVisibility, [
       "private",
       "public",
@@ -144,6 +152,7 @@ function normalizePreferences(
       "defaults",
     ]),
     sizeFormat: toEnum(input.sizeFormat, ["auto", "bytes", "metric"]),
+    featureBookmarksEnabled: toBool(input.featureBookmarksEnabled),
     featureFilesEnabled: toBool(input.featureFilesEnabled),
     featureShortlinksEnabled: toBool(input.featureShortlinksEnabled),
     featureWatchlistEnabled: toBool(input.featureWatchlistEnabled),
@@ -224,6 +233,14 @@ export async function getUserPreferences(
     defaultUploadTags: Array.isArray(row.defaultUploadTags)
       ? row.defaultUploadTags.filter(Boolean)
       : DEFAULT_PREFERENCES.defaultUploadTags,
+    defaultBookmarkVisibility:
+      row.defaultBookmarkVisibility === "public" ||
+      row.defaultBookmarkVisibility === "private"
+        ? row.defaultBookmarkVisibility
+        : DEFAULT_PREFERENCES.defaultBookmarkVisibility,
+    defaultBookmarkTags: Array.isArray(row.defaultBookmarkTags)
+      ? row.defaultBookmarkTags.filter(Boolean)
+      : DEFAULT_PREFERENCES.defaultBookmarkTags,
     defaultShortlinkVisibility:
       row.defaultShortlinkVisibility === "public" ||
       row.defaultShortlinkVisibility === "private"
@@ -261,6 +278,10 @@ export async function getUserPreferences(
       row.sizeFormat === "auto"
         ? row.sizeFormat
         : DEFAULT_PREFERENCES.sizeFormat,
+    featureBookmarksEnabled:
+      typeof row.featureBookmarksEnabled === "boolean"
+        ? row.featureBookmarksEnabled
+        : DEFAULT_PREFERENCES.featureBookmarksEnabled,
     featureFilesEnabled:
       typeof row.featureFilesEnabled === "boolean"
         ? row.featureFilesEnabled

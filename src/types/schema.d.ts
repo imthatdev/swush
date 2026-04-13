@@ -36,12 +36,12 @@ import {
   user,
 } from "@/db/schemas";
 import type { auth } from "@/lib/auth";
-import { ApiKey } from "better-auth/plugins";
+import { ApiKey } from "@better-auth/api-key";
 
 export type Session = typeof auth.$Infer.Session.session;
 export type User = typeof user.$inferSelect;
 
-export type APIKey = ApiKey;
+export type APIKey = Omit<ApiKey, "key">;
 
 export interface Summary {
   storage: {
@@ -60,6 +60,7 @@ export interface Summary {
   };
   resources: {
     files: { used: number; limit: number | null; remaining?: number | null };
+    bookmark: { used: number; limit: number | null; remaining?: number | null };
     shortLink: {
       used: number;
       limit: number | null;

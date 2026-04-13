@@ -51,6 +51,7 @@ export type FileListQuery = {
   tags?: string[];
   favorites?: boolean;
   kind?: string;
+  contentHash?: string;
   visibility?: "public" | "private" | null;
   page?: number;
   pageSize?: number;
@@ -91,7 +92,8 @@ export type FileListResult = {
   total: number;
 };
 
-const DEFAULT_PAGE_SIZE = 24;
+const MIN_PAGE_SIZE = 32;
+const DEFAULT_PAGE_SIZE = 32;
 const MAX_PAGE_SIZE = 200;
 const LIST_CACHE_TTL_MS = 8_000;
 const WARM_LIMIT = 24;
@@ -114,7 +116,7 @@ const textExts = [
 
 function clampPageSize(value: number) {
   if (!Number.isFinite(value) || value <= 0) return DEFAULT_PAGE_SIZE;
-  return Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(value)));
+  return Math.min(MAX_PAGE_SIZE, Math.max(MIN_PAGE_SIZE, Math.floor(value)));
 }
 
 function normalizeTags(input?: string[]) {
@@ -128,6 +130,7 @@ function buildCacheKey(params: {
   tags?: string[];
   favorites?: boolean;
   kind?: string;
+  contentHash?: string | null;
   visibility?: string | null;
   page: number;
   pageSize: number;
@@ -147,6 +150,7 @@ function buildCacheKey(params: {
     tagKey,
     params.favorites ? "1" : "0",
     params.kind ?? "",
+    params.contentHash ?? "",
     params.visibility ?? "",
     params.sort ?? "",
     String(params.page),
@@ -263,6 +267,7 @@ function parseListQuery(req: NextRequest) {
   const tags = [...tagsParam, ...tagParams].filter(Boolean);
   const favorites = params.get("favorite") === "1";
   const kind = params.get("kind")?.trim() || undefined;
+  const contentHash = params.get("contentHash")?.trim() || undefined;
   const visibilityRaw = params.get("visibility")?.trim() || undefined;
   const visibility =
     visibilityRaw === "public" || visibilityRaw === "private"
@@ -284,6 +289,7 @@ function parseListQuery(req: NextRequest) {
       tags,
       favorites,
       kind,
+      contentHash,
       visibility,
       page: Number.isFinite(page) ? page : undefined,
       pageSize: Number.isFinite(pageSize) ? pageSize : undefined,
@@ -306,6 +312,7 @@ export async function listFilesForUser(
   const folderName = query.folder?.trim();
   const folderKey = folderName ? folderName.toLowerCase() : null;
   const tagNames = normalizeTags(query.tags);
+  const contentHash = query.contentHash?.trim() || undefined;
   const pageSize = clampPageSize(query.pageSize ?? DEFAULT_PAGE_SIZE);
   const page = Math.max(1, Math.floor(query.page ?? 1));
 
@@ -316,6 +323,7 @@ export async function listFilesForUser(
     tags: tagNames,
     favorites: query.favorites,
     kind: query.kind,
+    contentHash,
     visibility: query.visibility,
     page,
     pageSize,
@@ -359,6 +367,10 @@ export async function listFilesForUser(
 
   const kindCondition = buildKindCondition(query.kind);
   if (kindCondition) conditions.push(kindCondition);
+
+  if (contentHash) {
+    conditions.push(eq(files.contentHash, contentHash));
+  }
 
   if (folderName) {
     if (folderKey === "unfiled") {

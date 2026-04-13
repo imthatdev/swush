@@ -24,6 +24,8 @@ import { rateLimit } from "@/lib/security/rate-limit";
 import { getClientIp } from "@/lib/security/ip";
 import { withApiError } from "@/lib/server/api-error";
 import { requireUserFeature } from "@/lib/server/user-features";
+import { shareUrl } from "@/lib/api/helpers";
+import { getPublicRuntimeSettings } from "@/lib/server/runtime-settings";
 
 export const GET = withApiError(async function GET(req: NextRequest) {
   let user = await getCurrentUser();
@@ -153,8 +155,11 @@ export const POST = withApiError(async function POST(req: NextRequest) {
       user.role,
     );
 
-    const origin = req.nextUrl.origin.replace(/\/+$/, "");
-    const shortUrl = `${origin}/s/${row.slug}`;
+    const { appUrl, sharingDomain } = await getPublicRuntimeSettings();
+    const shortUrl = shareUrl("s", row.slug, {
+      appUrl: appUrl || req.nextUrl.origin,
+      sharingDomain,
+    });
 
     await audit({
       action: "shortlink.create",

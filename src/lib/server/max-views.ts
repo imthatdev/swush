@@ -18,7 +18,7 @@
 import "server-only";
 
 import { db } from "@/db/client";
-import { files, shortLinks } from "@/db/schemas";
+import { bookmarks, files, shortLinks } from "@/db/schemas";
 import { and, eq, gte, isNull } from "drizzle-orm";
 import { createNotification } from "@/lib/server/notifications";
 import {
@@ -230,6 +230,65 @@ export async function handleFileMaxViews(row: typeof files.$inferSelect) {
     title: "File deleted",
     message: `\"${row.originalName}\" reached its max views and was deleted.`,
     data: { action, fileId: row.id, slug: row.slug },
+  });
+}
+
+export async function handleBookmarkMaxViews(
+  row: typeof bookmarks.$inferSelect,
+) {
+  if (!shouldTriggerMaxViews(row)) return;
+  const action = row.maxViewsAction;
+  if (!action) return;
+
+  if (action === "make_private") {
+    const [updated] = await db
+      .update(bookmarks)
+      .set({
+        isPublic: false,
+        passwordHash: null,
+        maxViews: null,
+        maxViewsAction: null,
+        maxViewsTriggeredAt: null,
+      })
+      .where(
+        and(
+          eq(bookmarks.id, row.id),
+          isNull(bookmarks.maxViewsTriggeredAt),
+          gte(bookmarks.views, row.maxViews ?? 0),
+        ),
+      )
+      .returning();
+    if (!updated.maxViewsAction) return;
+
+    await notifyMaxViews({
+      userId: row.userId,
+      title: "Bookmark made private",
+      message: `\"${row.title ?? row.url}\" reached its max views and was set to private.`,
+      data: { action, bookmarkId: row.id, slug: row.slug },
+    });
+    return;
+  }
+
+  const [marked] = await db
+    .update(bookmarks)
+    .set({ maxViewsTriggeredAt: new Date() })
+    .where(
+      and(
+        eq(bookmarks.id, row.id),
+        isNull(bookmarks.maxViewsTriggeredAt),
+        gte(bookmarks.views, row.maxViews ?? 0),
+      ),
+    )
+    .returning();
+  if (!marked.maxViewsAction) return;
+
+  await db.delete(bookmarks).where(eq(bookmarks.id, row.id));
+
+  await notifyMaxViews({
+    userId: row.userId,
+    title: "Bookmark deleted",
+    message: `\"${row.title ?? row.url}\" reached its max views and was deleted.`,
+    data: { action, bookmarkId: row.id, slug: row.slug },
   });
 }
 

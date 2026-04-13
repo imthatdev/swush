@@ -20,7 +20,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiV1 } from "@/lib/api-path";
 
-export type UserFeatureKey = "files" | "shortlinks" | "watchlist" | "meetings";
+export type UserFeatureKey = "bookmarks" | "files" | "shortlinks" | "watchlist";
 
 export type UserFeatureState = {
   isEnabled: boolean;
@@ -30,10 +30,10 @@ export type UserFeatureState = {
 export type UserFeatureMap = Record<UserFeatureKey, UserFeatureState>;
 
 const FEATURE_KEYS: UserFeatureKey[] = [
+  "bookmarks",
   "files",
   "shortlinks",
   "watchlist",
-  "meetings",
 ];
 
 const DEFAULT_FEATURES = FEATURE_KEYS.reduce((acc, key) => {

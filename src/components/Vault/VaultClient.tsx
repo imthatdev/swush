@@ -105,11 +105,13 @@ interface DashboardWrapperProps {
   initialPageSize: number;
 }
 
-const PAGE_SIZE_OPTIONS = [12, 24, 48, 96] as const;
+const PAGE_SIZE_OPTIONS = [32, 48, 64, 96] as const;
 const CARD_VISIBILITY_STYLE = {
   contentVisibility: "auto",
   containIntrinsicSize: "320px 420px",
 } as CSSProperties;
+const VAULT_REFRESH_SHOW_DELAY_MS = 120;
+const VAULT_REFRESH_MIN_VISIBLE_MS = 180;
 
 export default function VaultClient({
   user,
@@ -127,6 +129,7 @@ export default function VaultClient({
   const focusIdParam = searchParams.get("focusId");
   const initialQ = searchParams.get("q");
   const initialFolder = searchParams.get("folder");
+  const initialDupHash = searchParams.get("dupHash");
   const initialTagsParam = searchParams.get("tags");
   const initialTagParams = searchParams.getAll("tag");
   const initialTags = [
@@ -140,6 +143,7 @@ export default function VaultClient({
   const initialVisibility = searchParams.get("visibility");
   const initialSort = searchParams.get("sort");
   const initialGallery = searchParams.get("gallery");
+  const scrollDebugEnabled = searchParams.get("scrollDebug") === "1";
   const didInitFromUrl = useRef(false);
   const didSyncFolderFromPlayer = useRef(false);
   const didFetchFromFilters = useRef(false);
@@ -163,6 +167,9 @@ export default function VaultClient({
   const [filterVisibility, setFilterVisibility] = useState<
     "public" | "private" | "all"
   >("all");
+  const [duplicateHashFilter, setDuplicateHashFilter] = useState<string | null>(
+    initialDupHash || null,
+  );
   const [pinnedIdsRaw, setPinnedIdsRaw] = useLocalStorageString(
     "vault:pinned",
     "",
@@ -242,6 +249,7 @@ export default function VaultClient({
     didInitFromUrl.current = true;
     if (initialQ) setQuery(initialQ);
     if (initialFolder) setSelectedFolder(initialFolder);
+    if (initialDupHash) setDuplicateHashFilter(initialDupHash);
     if (initialTags.length) setSelectedTags(initialTags);
     if (initialFav === "1") setShowFavorites(true);
     if (initialGallery === "1") setGalleryView(true);
@@ -275,6 +283,56 @@ export default function VaultClient({
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
 
   const [refreshing, setRefreshing] = useState(false);
+  const refreshShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const refreshShownAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (refreshShowTimerRef.current) {
+        clearTimeout(refreshShowTimerRef.current);
+      }
+    };
+  }, []);
+
+  const beginRefreshIndicator = useCallback((silent?: boolean) => {
+    if (silent) return;
+
+    if (refreshShowTimerRef.current) {
+      clearTimeout(refreshShowTimerRef.current);
+      refreshShowTimerRef.current = null;
+    }
+
+    refreshShowTimerRef.current = setTimeout(() => {
+      refreshShowTimerRef.current = null;
+      refreshShownAtRef.current = Date.now();
+      setRefreshing(true);
+    }, VAULT_REFRESH_SHOW_DELAY_MS);
+  }, []);
+
+  const endRefreshIndicator = useCallback(async (silent?: boolean) => {
+    if (silent) return;
+
+    if (refreshShowTimerRef.current) {
+      clearTimeout(refreshShowTimerRef.current);
+      refreshShowTimerRef.current = null;
+    }
+
+    const shownAt = refreshShownAtRef.current;
+    if (shownAt) {
+      const elapsed = Date.now() - shownAt;
+      const remaining = VAULT_REFRESH_MIN_VISIBLE_MS - elapsed;
+      if (remaining > 0) {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, remaining);
+        });
+      }
+    }
+
+    refreshShownAtRef.current = null;
+    setRefreshing(false);
+  }, []);
 
   const loadPendingApprovals = useCallback(async () => {
     try {
@@ -314,6 +372,7 @@ export default function VaultClient({
       if (filterKind !== "all") params.set("kind", filterKind);
       if (filterVisibility !== "all")
         params.set("visibility", filterVisibility);
+      if (duplicateHashFilter) params.set("contentHash", duplicateHashFilter);
       if (vaultSort) params.set("sort", vaultSort);
       params.set("page", String(nextPage));
       params.set("pageSize", String(pageSize));
@@ -324,6 +383,7 @@ export default function VaultClient({
     },
     [
       debouncedQuery,
+      duplicateHashFilter,
       filterKind,
       filterVisibility,
       pageSize,
@@ -336,12 +396,11 @@ export default function VaultClient({
 
   const fetchFilesPage = useCallback(
     async (nextPage: number, { silent }: { silent?: boolean } = {}) => {
-      if (!silent) setRefreshing(true);
+      beginRefreshIndicator(silent);
       try {
         const params = buildListParams(nextPage);
-        const filesPath = apiV1("/files");
         const res = await fetchSafeInternalApi(
-          `${filesPath}?${params.toString()}`,
+          apiV1(`/files?${params.toString()}`),
           {
             cache: "no-store",
           },
@@ -369,10 +428,15 @@ export default function VaultClient({
           toast.error((err as Error).message || "Failed to load files");
         }
       } finally {
-        if (!silent) setRefreshing(false);
+        await endRefreshIndicator(silent);
       }
     },
-    [buildListParams, loadPendingApprovals],
+    [
+      beginRefreshIndicator,
+      buildListParams,
+      endRefreshIndicator,
+      loadPendingApprovals,
+    ],
   );
 
   async function handleRefresh() {
@@ -392,11 +456,13 @@ export default function VaultClient({
         showFavorites ? "fav" : "",
         filterKind,
         filterVisibility,
+        duplicateHashFilter ?? "",
         vaultSort,
         String(pageSize),
       ].join("|"),
     [
       debouncedQuery,
+      duplicateHashFilter,
       filterKind,
       filterVisibility,
       pageSize,
@@ -573,6 +639,12 @@ export default function VaultClient({
         }
       }
 
+      if (duplicateHashFilter) {
+        if ((f.contentHash ?? null) !== duplicateHashFilter) {
+          return false;
+        }
+      }
+
       if (selectedFolder) {
         const folder = folderNameOf(f)?.toLowerCase() ?? "";
         if (folder !== selectedFolder.toLowerCase()) return false;
@@ -613,6 +685,7 @@ export default function VaultClient({
     },
     [
       debouncedQuery,
+      duplicateHashFilter,
       filterKind,
       filterVisibility,
       resolveKind,
@@ -813,12 +886,15 @@ export default function VaultClient({
     if (showFavorites) sp.set("favorite", "1");
     if (filterKind !== "all") sp.set("kind", filterKind);
     if (filterVisibility !== "all") sp.set("visibility", filterVisibility);
+    if (duplicateHashFilter) sp.set("dupHash", duplicateHashFilter);
     if (vaultSort) sp.set("sort", vaultSort);
     if (galleryView) sp.set("gallery", "1");
     if (pageSize) sp.set("pageSize", String(pageSize));
     if (page > 1) sp.set("page", String(page));
     if (focusIdParam) sp.set("focusId", focusIdParam);
-    router.replace(`/vault${sp.toString() ? `?${sp.toString()}` : ""}`);
+    router.replace(`/vault${sp.toString() ? `?${sp.toString()}` : ""}`, {
+      scroll: false,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     debouncedQuery,
@@ -830,6 +906,7 @@ export default function VaultClient({
     galleryView,
     filterKind,
     filterVisibility,
+    duplicateHashFilter,
     vaultSort,
     focusIdParam,
   ]);
@@ -938,9 +1015,8 @@ export default function VaultClient({
         if (folder) params.set("folder", folder);
         if (vaultSort) params.set("sort", vaultSort);
 
-        const filesPath = apiV1("/files");
         const res = await fetchSafeInternalApi(
-          `${filesPath}?${params.toString()}`,
+          apiV1(`/files?${params.toString()}`),
           {
             cache: "no-store",
           },
@@ -1005,9 +1081,98 @@ export default function VaultClient({
     return () => setLoadFolderIntoPlayer(null);
   }, [loadFolderIntoPlayer, setLoadFolderIntoPlayer]);
 
+  useEffect(() => {
+    if (!scrollDebugEnabled) return;
+
+    const getLabel = (el: HTMLElement | null) => {
+      if (!el) return "null";
+      const id = el.id ? `#${el.id}` : "";
+      const cls = el.className
+        ? `.${String(el.className).trim().replace(/\s+/g, ".")}`
+        : "";
+      return `${el.tagName.toLowerCase()}${id}${cls}`;
+    };
+
+    const isScrollable = (el: HTMLElement | null) => {
+      if (!el) return false;
+      const style = window.getComputedStyle(el);
+      const overflowY = style.overflowY;
+      const canOverflow = overflowY === "auto" || overflowY === "scroll";
+      return canOverflow && el.scrollHeight > el.clientHeight;
+    };
+
+    const dumpAncestors = (from: HTMLElement | null, title: string) => {
+      const rows: Array<{
+        node: string;
+        overflowY: string;
+        scrollTop: number;
+        scrollHeight: number;
+        clientHeight: number;
+        scrollable: boolean;
+      }> = [];
+      let curr: HTMLElement | null = from;
+      while (curr) {
+        const style = window.getComputedStyle(curr);
+        rows.push({
+          node: getLabel(curr),
+          overflowY: style.overflowY,
+          scrollTop: curr.scrollTop,
+          scrollHeight: curr.scrollHeight,
+          clientHeight: curr.clientHeight,
+          scrollable: isScrollable(curr),
+        });
+        curr = curr.parentElement;
+      }
+      // eslint-disable-next-line no-console
+      console.table({ title, rows });
+    };
+
+    const root = document.querySelector(
+      ".vault-scroll-root",
+    ) as HTMLElement | null;
+    dumpAncestors(root, "vault-root-ancestors");
+
+    const onScrollCapture = (event: Event) => {
+      const el = event.target as HTMLElement | null;
+      if (!el) return;
+      if (!isScrollable(el)) return;
+      // eslint-disable-next-line no-console
+      console.log("[vault-scroll-debug] scroll", {
+        node: getLabel(el),
+        scrollTop: el.scrollTop,
+        clientHeight: el.clientHeight,
+        scrollHeight: el.scrollHeight,
+      });
+    };
+
+    const onWheelCapture = (event: WheelEvent) => {
+      const path = event
+        .composedPath()
+        .filter((x): x is HTMLElement => x instanceof HTMLElement);
+      const firstScrollable = path.find((el) => isScrollable(el)) ?? null;
+      // eslint-disable-next-line no-console
+      console.log("[vault-scroll-debug] wheel", {
+        deltaY: event.deltaY,
+        target: getLabel(event.target as HTMLElement | null),
+        firstScrollable: getLabel(firstScrollable),
+      });
+    };
+
+    window.addEventListener("scroll", onScrollCapture, true);
+    window.addEventListener("wheel", onWheelCapture, {
+      capture: true,
+      passive: true,
+    });
+
+    return () => {
+      window.removeEventListener("scroll", onScrollCapture, true);
+      window.removeEventListener("wheel", onWheelCapture, true);
+    };
+  }, [scrollDebugEnabled, pageSize]);
+
   return (
     <PageLayout
-      className="h-auto! overflow-visible!"
+      className="vault-scroll-root h-full min-h-0 overflow-y-auto overscroll-contain"
       title={`Welcome back, ${user?.name ? user.name : user.username} 👋`}
       subtitle="Here’s your stash."
       headerActions={
@@ -1212,7 +1377,7 @@ export default function VaultClient({
       )}
 
       <Dialog open={duplicatesOpen} onOpenChange={setDuplicatesOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-2xl max-h-[85svh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Duplicate files</DialogTitle>
           </DialogHeader>
@@ -1221,7 +1386,7 @@ export default function VaultClient({
               <Spinner className="h-4 w-4" /> Loading duplicates...
             </div>
           ) : duplicateGroups.length ? (
-            <div className="space-y-4 max-h-[50vh] overflow-auto">
+            <div className="space-y-4 max-h-[60svh] overflow-y-auto overflow-x-hidden pr-1 overscroll-contain">
               {duplicateGroups.map((group) => (
                 <div key={group.contentHash} className="rounded-md border p-3">
                   <div className="flex items-center justify-between">
@@ -1232,17 +1397,28 @@ export default function VaultClient({
                       variant="outline"
                       size="sm"
                       onClick={() => {
+                        didSyncFolderFromPlayer.current = true;
                         clearSelection();
-                        selectRange(
-                          group.items.map((i) => i.id),
+                        setQuery("");
+                        setSelectedFolder(null);
+                        setSelectedTags([]);
+                        setShowFavorites(false);
+                        setFilterKind("all");
+                        setFilterVisibility("all");
+                        setDuplicateHashFilter(group.contentHash);
+                        setPage(1);
+                        setShowFilters(true);
+                        setDuplicatesOpen(false);
+                        toast.message(
+                          `Showing ${group.total} duplicate file${group.total === 1 ? "" : "s"}`,
                           {
-                            additive: false,
+                            description:
+                              "Review these files and delete the ones you do not need.",
                           },
                         );
-                        setDuplicatesOpen(false);
                       }}
                     >
-                      Select group
+                      Show group
                     </Button>
                   </div>
                   <ul className="mt-2 space-y-1 text-sm">
@@ -1273,7 +1449,7 @@ export default function VaultClient({
         </DialogContent>
       </Dialog>
 
-      {(selectedFolder || selectedTags.length > 0) && (
+      {(selectedFolder || selectedTags.length > 0 || duplicateHashFilter) && (
         <div className="flex flex-wrap gap-2 items-center mb-2">
           {selectedFolder &&
             (() => {
@@ -1306,6 +1482,21 @@ export default function VaultClient({
               </Badge>
             );
           })}
+          {duplicateHashFilter && (
+            <>
+              <Badge variant="secondary" className="gap-1">
+                <IconFilterSpark size={12} /> Duplicate group
+              </Badge>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2"
+                onClick={() => setDuplicateHashFilter(null)}
+              >
+                Clear duplicate filter
+              </Button>
+            </>
+          )}
         </div>
       )}
 

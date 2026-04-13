@@ -20,7 +20,7 @@ import "server-only";
 import webpush from "web-push";
 import { db } from "@/db/client";
 import { pushSubscriptions } from "@/db/schemas";
-import { eq } from "drizzle-orm";
+import { and, desc, eq, lt } from "drizzle-orm";
 import { getPublicRuntimeSettings } from "./runtime-settings";
 
 type PushPayload = {
@@ -30,7 +30,29 @@ type PushPayload = {
   sound?: string | null;
 };
 
+export type PushSubscriptionSummary = {
+  id: string;
+  endpoint: string;
+  endpointHost: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 let vapidReady = false;
+
+function parsePositiveInt(value: unknown, fallback: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.floor(parsed);
+}
+
+function endpointHost(endpoint: string) {
+  try {
+    return new URL(endpoint).host || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
 
 export function isVapidConfigured() {
   return Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
@@ -50,9 +72,56 @@ async function ensureVapid() {
   vapidReady = true;
 }
 
+export async function listPushSubscriptionsForUser(userId: string) {
+  const rows = await db
+    .select({
+      id: pushSubscriptions.id,
+      endpoint: pushSubscriptions.endpoint,
+      createdAt: pushSubscriptions.createdAt,
+      updatedAt: pushSubscriptions.updatedAt,
+    })
+    .from(pushSubscriptions)
+    .where(eq(pushSubscriptions.userId, userId))
+    .orderBy(desc(pushSubscriptions.updatedAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    endpoint: row.endpoint,
+    endpointHost: endpointHost(row.endpoint),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  })) satisfies PushSubscriptionSummary[];
+}
+
+export async function removeInactivePushSubscriptions(params?: {
+  inactiveDays?: number;
+  userId?: string;
+}) {
+  const inactiveDays = parsePositiveInt(params?.inactiveDays, 30);
+  const cutoff = new Date(Date.now() - inactiveDays * 24 * 60 * 60 * 1000);
+
+  const whereClause = params?.userId
+    ? and(
+        eq(pushSubscriptions.userId, params.userId),
+        lt(pushSubscriptions.updatedAt, cutoff),
+      )
+    : lt(pushSubscriptions.updatedAt, cutoff);
+
+  const removed = await db
+    .delete(pushSubscriptions)
+    .where(whereClause)
+    .returning({ id: pushSubscriptions.id });
+
+  return {
+    removed: removed.length,
+    inactiveDays,
+    cutoff: cutoff.toISOString(),
+  };
+}
+
 export async function sendPushToUser(userId: string, payload: PushPayload) {
   try {
-    ensureVapid();
+    await ensureVapid();
   } catch {
     return;
   }
@@ -83,6 +152,11 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
           },
           body,
         );
+
+        await db
+          .update(pushSubscriptions)
+          .set({ updatedAt: new Date() })
+          .where(eq(pushSubscriptions.id, sub.id));
       } catch (err) {
         const status =
           typeof err === "object" && err !== null

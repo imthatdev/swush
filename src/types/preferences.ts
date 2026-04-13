@@ -46,6 +46,8 @@ export type UserPreferences = {
   defaultUploadVisibility: VisibilityDefault;
   defaultUploadFolder: string | null;
   defaultUploadTags: string[];
+  defaultBookmarkVisibility: VisibilityDefault;
+  defaultBookmarkTags: string[];
   defaultShortlinkVisibility: VisibilityDefault;
   defaultShortlinkTags: string[];
   defaultShortlinkMaxClicks: number | null;
@@ -54,6 +56,7 @@ export type UserPreferences = {
   rememberSettingsTab: boolean;
   lastSettingsTab: "display" | "behavior" | "defaults";
   sizeFormat: SizeFormat;
+  featureBookmarksEnabled: boolean;
   featureFilesEnabled: boolean;
   featureShortlinksEnabled: boolean;
   featureWatchlistEnabled: boolean;

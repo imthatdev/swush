@@ -19,8 +19,35 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "./schemas";
 import { Pool } from "pg";
 
+function parsePositiveInt(
+  value: string | undefined,
+  fallback: number,
+  min = 1,
+) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < min) return fallback;
+  return Math.floor(parsed);
+}
+
+const poolMax = parsePositiveInt(process.env.PG_POOL_MAX, 20, 1);
+const idleTimeoutMillis = parsePositiveInt(
+  process.env.PG_POOL_IDLE_TIMEOUT_MS,
+  30_000,
+  1,
+);
+const connectionTimeoutMillis = parsePositiveInt(
+  process.env.PG_POOL_CONNECTION_TIMEOUT_MS,
+  7_500,
+  1,
+);
+const maxUses = parsePositiveInt(process.env.PG_POOL_MAX_USES, 7_500, 1);
+
 const client = new Pool({
   connectionString: process.env.DATABASE_URL,
+  max: poolMax,
+  idleTimeoutMillis,
+  connectionTimeoutMillis,
+  maxUses,
 });
 
 export const db = drizzle({

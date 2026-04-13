@@ -57,6 +57,7 @@ export default function ExportData() {
     includeFiles: true,
     includeFileBinaries: true,
     includeShortLinks: true,
+    includeBookmarks: true,
   });
 
   const cacheKey = useMemo(
@@ -116,11 +117,15 @@ export default function ExportData() {
         includeFiles,
         includeFileBinaries,
         includeShortLinks: selection.includeShortLinks,
+        includeBookmarks: selection.includeBookmarks,
       },
     };
 
     const anySelected =
-      payload.include.includeFiles || payload.include.includeShortLinks;
+      payload.include.includeFiles ||
+      payload.include.includeShortLinks ||
+      payload.include.includeBookmarks;
+
     if (!anySelected) {
       toast.error("Pick at least one export type");
       return;
@@ -279,6 +284,18 @@ export default function ExportData() {
                   }
                 />
                 Short links
+              </label>
+              <label className="flex items-center gap-2">
+                <Checkbox
+                  checked={selection.includeBookmarks}
+                  onCheckedChange={(value) =>
+                    setSelection((prev) => ({
+                      ...prev,
+                      includeBookmarks: Boolean(value),
+                    }))
+                  }
+                />
+                Bookmarks
               </label>
             </div>
             <DialogFooter>

@@ -17,8 +17,11 @@
 
 import "server-only";
 
+import { normalizeSharingDomain } from "@/lib/api/helpers";
+
 export type PublicRuntimeSettings = {
   appUrl: string;
+  sharingDomain: string;
   appName: string;
   supportName: string;
   supportEmail: string;
@@ -94,12 +97,14 @@ export async function getPublicRuntimeSettings(): Promise<PublicRuntimeSettings>
   const appName = process.env.APP_NAME || "Swush";
   const supportName = process.env.SUPPORT_NAME || "Swush Support";
   const supportEmail = process.env.SUPPORT_EMAIL || "help@swush.local";
+  let sharingDomain = normalizeSharingDomain(process.env.SHARING_DOMAIN) || "";
 
   let sponsorBannerEnabled = true;
   try {
     const { getServerSettings } = await import("@/lib/settings");
     const settings = await getServerSettings();
     sponsorBannerEnabled = settings.sponsorBannerEnabled ?? true;
+    sharingDomain = normalizeSharingDomain(settings.sharingDomain) || "";
   } catch {
     sponsorBannerEnabled = true;
   }
@@ -120,6 +125,7 @@ export async function getPublicRuntimeSettings(): Promise<PublicRuntimeSettings>
 
   return {
     appUrl,
+    sharingDomain,
     appName,
     supportName,
     supportEmail,

@@ -19,7 +19,7 @@ import "server-only";
 
 import { generateFunnySlug } from "@/lib/funny-slug";
 
-export type VanitySlugKind = "shortLinks";
+export type VanitySlugKind = "bookmarks" | "shortLinks";
 
 export async function resolveVanitySlug(params: {
   desired?: string | null;

@@ -19,6 +19,10 @@ export const runtime = "nodejs";
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === "edge") return;
-  const mod = await import("@/lib/server/cron-scheduler");
-  mod.startCronScheduler();
+  const [cron, workerLoop] = await Promise.all([
+    import("@/lib/server/cron-scheduler"),
+    import("@/lib/server/job-worker-loop"),
+  ]);
+  cron.startCronScheduler();
+  workerLoop.startBackgroundJobWorkerLoop();
 }

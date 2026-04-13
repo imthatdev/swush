@@ -30,9 +30,11 @@ export interface AdminUser {
   maxStorageMb: number | null;
   maxUploadMb: number | null;
   filesLimit: number | null;
+  bookmarksLimit: number | null;
   shortLinksLimit: number | null;
   allowRemoteUpload: boolean | null;
   allowFiles: boolean | null;
+  allowBookmarks: boolean | null;
   allowShortlinks: boolean | null;
   allowWatchlist: boolean | null;
   disableApiTokens: boolean;
@@ -40,6 +42,7 @@ export interface AdminUser {
   verified: boolean;
   usage: {
     files: number;
+    bookmarks: number;
     storageBytes: number;
     links: number;
     clicks: number;

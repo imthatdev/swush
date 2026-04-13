@@ -21,9 +21,12 @@ import { CronJob } from "cron";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { adminJobRuns } from "@/db/schemas";
+import { isJobExecutionEnabled } from "@/lib/server/job-runner-role";
+import { releaseRedisLock, tryAcquireRedisLock } from "@/lib/server/redis";
 import {
   runAnilistWatchingJob,
   runMediaOptimizationJob,
+  runPushSubscriptionCleanupJob,
   runPreviewGenerationJob,
   runStreamGenerationJob,
   runStorageCleanupJob,
@@ -38,10 +41,16 @@ type JobName =
   | "preview-generation"
   | "stream-generation"
   | "storage-cleanup"
+  | "pwa-subscription-cleanup"
   | "anilist-watching";
 
 const CRON_SCHEDULE = "0 3 * * *";
 const CRON_TZ = "Etc/GMT-3";
+const CRON_LOCK_TTL_MS = (() => {
+  const parsed = Number(process.env.REDIS_CRON_LOCK_TTL_MS);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 2 * 60 * 60 * 1000;
+  return Math.floor(parsed);
+})();
 
 async function recordRun(job: JobName, fn: () => Promise<unknown>) {
   const [run] = await db
@@ -77,22 +86,48 @@ async function recordRun(job: JobName, fn: () => Promise<unknown>) {
 }
 
 async function runScheduledJobs() {
-  await recordRun("media-optimization", () => runMediaOptimizationJob(3));
-  await recordRun("preview-generation", () => runPreviewGenerationJob(3));
-  const streamLimitRaw = Number(process.env.STREAM_JOBS_QUEUE_LIMIT || 15);
-  const streamLimit =
-    Number.isFinite(streamLimitRaw) && streamLimitRaw > 0
-      ? Math.floor(streamLimitRaw)
-      : 15;
-  await recordRun("stream-generation", () =>
-    runStreamGenerationJob(streamLimit),
+  const cleanupDaysRaw = Number(
+    process.env.PWA_SUBSCRIPTION_CLEANUP_DAYS || 30,
   );
-  await recordRun("storage-cleanup", () => runStorageCleanupJob(3));
-  await recordRun("anilist-watching", () => runAnilistWatchingJob());
+  const cleanupDays =
+    Number.isFinite(cleanupDaysRaw) && cleanupDaysRaw > 0
+      ? Math.floor(cleanupDaysRaw)
+      : 30;
+
+  const { lock, available } = await tryAcquireRedisLock(
+    "cron:scheduled-jobs",
+    CRON_LOCK_TTL_MS,
+  );
+
+  if (available && !lock) {
+    console.info("cron-scheduler: skipped run because lock is already held");
+    return;
+  }
+
+  try {
+    await recordRun("media-optimization", () => runMediaOptimizationJob(3));
+    await recordRun("preview-generation", () => runPreviewGenerationJob(3));
+    const streamLimitRaw = Number(process.env.STREAM_JOBS_QUEUE_LIMIT || 15);
+    const streamLimit =
+      Number.isFinite(streamLimitRaw) && streamLimitRaw > 0
+        ? Math.floor(streamLimitRaw)
+        : 15;
+    await recordRun("stream-generation", () =>
+      runStreamGenerationJob(streamLimit),
+    );
+    await recordRun("storage-cleanup", () => runStorageCleanupJob(3));
+    await recordRun("pwa-subscription-cleanup", () =>
+      runPushSubscriptionCleanupJob(cleanupDays),
+    );
+    await recordRun("anilist-watching", () => runAnilistWatchingJob());
+  } finally {
+    await releaseRedisLock(lock);
+  }
 }
 
 export function startCronScheduler() {
   if (globalThis.__swushCronStarted) return;
+  if (!isJobExecutionEnabled()) return;
   if (process.env.ENABLE_APP_CRON === "false") return;
 
   globalThis.__swushCronStarted = true;

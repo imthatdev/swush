@@ -11,6 +11,41 @@ This project follows [Semantic Versioning](https://iconical.dev/versioning).
 
 ---
 
+v1.2.0 – Runtime & Queue Intelligence ⚙️
+
+Released: April 12, 2026
+
+### ⚡ Performance & Observability
+- Introduced runtime signals tracking for monitoring event loop lag and API latency.
+- Implemented server settings caching to reduce repeated lookups and improve response times.
+- Added Redis caching for API key lookups and settings retrieval to speed up critical paths.
+- Added health check endpoints for API and job queue monitoring.
+
+### 🔄 Jobs & Processing
+- Enhanced Jobs handling with retry logic and dead-letter queue support.
+- Improved storage cleanup jobs with execution validation and state awareness.
+- Added new admin job for automated PWA subscription cleanup.
+
+### 🔖 Bookmarks & RSS Auto-Hoard
+- Added Auto-Hoard RSS feed management for Bookmarks with feed create/update/delete, run-now, and schedule controls.
+- Added bookmark RSS API routes and worker runner integration so feeds are queued and processed in the background.
+- Added a Bookmarks header tools menu with quick actions for Import/Export and Auto-Hoard RSS dialogs.
+- Updated RSS management UX so Add RSS feed opens in a dedicated modal separate from the configured-feeds screen.
+- Hardened RSS feed settings by normalizing `maxItemsPerFetch` to a clamped integer before persistence.
+- Export and Import Bookmarks with ease using JSON and HTML files, making it simple to backup or transfer your bookmarks.
+
+### 📦 Storage & Infrastructure
+- Strengthened storage configuration with socket limits and acquisition timeouts.
+- Improved storage handling with path traversal protection and safer socket management.
+- Enhanced yt-dlp processing with better file naming and optimized threading.
+- Docker runs swush app and swush worker as separate services for better scalability and reliability.
+
+### 🧠 Internal & Types
+- Introduced admin queue health types for monitoring job system metrics.
+- Updated schema definitions for improved API key handling.
+
+---
+
 ## v1.1.1 – URL Safety Patch 🔐
 
 **Released: February 25, 2026**

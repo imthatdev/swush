@@ -25,6 +25,7 @@ import {
   deletePrefixFromStorage,
   type StorageDriver,
 } from "@/lib/storage";
+import { isJobExecutionEnabled } from "@/lib/server/job-runner-role";
 
 export type StorageCleanupStatus = "queued" | "processing" | "ready" | "failed";
 
@@ -117,7 +118,10 @@ async function processStorageCleanupJob(job: StorageCleanupRow) {
       .set({
         status: fail ? "failed" : "queued",
         attempts,
-        error: String((err as Error)?.message || "Cleanup failed").slice(0, 1024),
+        error: String((err as Error)?.message || "Cleanup failed").slice(
+          0,
+          1024,
+        ),
         updatedAt: new Date(),
       })
       .where(eq(storageCleanupJobs.id, job.id));
@@ -125,6 +129,8 @@ async function processStorageCleanupJob(job: StorageCleanupRow) {
 }
 
 export async function runStorageCleanupJobById(jobId: string) {
+  if (!isJobExecutionEnabled()) return { processed: 0 };
+
   const [job] = await db
     .select()
     .from(storageCleanupJobs)
@@ -136,6 +142,8 @@ export async function runStorageCleanupJobById(jobId: string) {
 }
 
 export async function runStorageCleanupJobs(limit = 3) {
+  if (!isJobExecutionEnabled()) return { processed: 0 };
+
   const count = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 10) : 3;
   const jobs = await db
     .select()
@@ -161,6 +169,8 @@ export async function kickStorageCleanupRunner(params?: {
   limit?: number;
   jobId?: string | null;
 }) {
+  if (!isJobExecutionEnabled()) return { processed: 0 };
+
   if (params?.jobId) {
     pendingCleanupIds.add(params.jobId);
   } else {
@@ -200,4 +210,12 @@ export async function kickStorageCleanupRunner(params?: {
       });
     }
   }
+}
+
+export function getStorageCleanupRunnerState() {
+  return {
+    active: cleanupRunnerActive,
+    pendingById: pendingCleanupIds.size,
+    pendingBatch: pendingCleanupBatch,
+  };
 }

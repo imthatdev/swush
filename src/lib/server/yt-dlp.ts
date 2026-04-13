@@ -21,6 +21,7 @@ import path from "path";
 import { nanoid } from "nanoid";
 import { readdir, stat } from "fs/promises";
 import { assertSafeExternalHttpUrl } from "@/lib/security/url";
+import { applyBackgroundProcessPriority } from "@/lib/server/process-priority";
 
 export class YtDlpNotFoundError extends Error {
   constructor(message?: string) {
@@ -57,6 +58,12 @@ function sanitizeFileSegment(value: string) {
   return safe;
 }
 
+function parsePositiveInt(value: string | undefined, fallback: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.max(1, Math.floor(parsed));
+}
+
 export async function downloadWithYtDlp(
   url: string,
   prefix = "yt",
@@ -79,13 +86,20 @@ export async function downloadWithYtDlp(
   );
 
   return new Promise<YtDlpResult>((resolve, reject) => {
+    const formatSelector =
+      process.env.YT_DLP_FORMAT?.trim() ||
+      "best[ext=mp4]/bestvideo+bestaudio/best";
+    const ffmpegThreads = parsePositiveInt(process.env.FFMPEG_THREADS, 1);
+
     const args = [
       "-f",
-      "bestvideo+bestaudio/best",
+      formatSelector,
       "--merge-output-format",
       "mp4",
       "--no-playlist",
       "--newline",
+      "--postprocessor-args",
+      `ffmpeg:-threads ${ffmpegThreads}`,
       "-o",
       outTemplate,
     ];
@@ -98,6 +112,7 @@ export async function downloadWithYtDlp(
     const proc = spawn(getYtDlpBinary(), args, {
       stdio: ["ignore", "pipe", "pipe"],
     });
+    applyBackgroundProcessPriority(proc);
     let stderr = "";
     proc.stdout?.on("data", (d) => {
       const s = d.toString();

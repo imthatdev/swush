@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import CopyButton from "@/components/Common/CopyButton";
 import { useAppConfig } from "@/components/Providers/AppConfigProvider";
+import { buildShareUrl } from "@/lib/api/helpers";
 
 type Props = {
   viewUrl: string;
@@ -39,9 +40,9 @@ export default function ClientFileActions({
   onPreview,
   canPreview,
 }: Props) {
-  const { appUrl } = useAppConfig();
-  const baseUrl =
-    typeof window !== "undefined" ? window.location.origin : appUrl || "";
+  const { appUrl, sharingDomain } = useAppConfig();
+  const resolveUrl = (path: string) =>
+    buildShareUrl(path, { appUrl, sharingDomain });
   const downloadHref = password
     ? `${rawUrl}?p=${encodeURIComponent(password)}`
     : rawUrl;
@@ -73,7 +74,7 @@ export default function ClientFileActions({
         successMessage="Page link copied"
         showCopiedText
         getText={() => {
-          const url = new URL(viewUrl, baseUrl);
+          const url = new URL(resolveUrl(viewUrl));
           if (password) {
             url.searchParams.set("p", password);
           }
@@ -89,7 +90,7 @@ export default function ClientFileActions({
         className="gap-2 rounded-full px-5 shadow-sm"
         successMessage="Raw link copied"
         getText={() => {
-          const url = new URL(rawUrl, baseUrl);
+          const url = new URL(resolveUrl(rawUrl));
           if (password) {
             url.searchParams.set("p", password);
           }

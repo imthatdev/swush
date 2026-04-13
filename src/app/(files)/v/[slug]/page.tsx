@@ -26,6 +26,7 @@ import FileUnlockAndView, {
 import ExternalLayout from "@/components/Common/ExternalLayout";
 import { getPublicRuntimeSettings } from "@/lib/server/runtime-settings";
 import { formatBytes, isSpoilerLabel } from "@/lib/helpers";
+import { shareUrl } from "@/lib/api/helpers";
 import {
   applyEmbedTemplates,
   applyEmbedSettings,
@@ -85,8 +86,9 @@ export async function generateMetadata({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const { appName, appUrl } = await getPublicRuntimeSettings();
+  const { appName, appUrl, sharingDomain } = await getPublicRuntimeSettings();
   const defaultMetadata = await getDefaultMetadata();
+  const shareBase = appUrl || sharingDomain || "";
 
   let file: FileDto | null = null;
   try {
@@ -105,12 +107,17 @@ export async function generateMetadata({
   let ogImage;
 
   if (isLocked) {
-    ogImage = `${appUrl}/images/lock.jpg`;
+    ogImage = `${shareBase}/images/lock.jpg`;
   } else if (isSpoiler) {
-    ogImage = `${appUrl}/images/nsfw.jpg`;
+    ogImage = `${shareBase}/images/nsfw.jpg`;
   } else {
-    ogImage = `${appUrl}/x/${slug}.png`;
+    ogImage = `${shareBase}/x/${slug}.png`;
   }
+
+  const canonical =
+    appUrl || sharingDomain
+      ? shareUrl("v", slug, { appUrl, sharingDomain })
+      : `/v/${slug}`;
 
   const anonymousActive = Boolean(file?.anonymousShareEnabled);
   const ownerUsername = anonymousActive ? undefined : file?.ownerUsername;
@@ -125,7 +132,7 @@ export async function generateMetadata({
     title: sizeText,
     description: `View a shared file on ${appName}.`,
     robots: { index: false, follow: true },
-    alternates: { canonical: `/v/${slug}` },
+    alternates: { canonical },
     other: isSpoiler
       ? {
           rating: "adult",
@@ -136,7 +143,7 @@ export async function generateMetadata({
       title: sizeText,
       siteName: siteName,
       description: `View a shared file on ${appName} with ${file?.views ?? 0} views.`,
-      url: `${appUrl}/v/${slug}`,
+      url: canonical,
       images: [
         {
           url: ogImage,

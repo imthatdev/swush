@@ -17,6 +17,7 @@
 
 "use client";
 import {
+  IconChartBar,
   IconCopy,
   IconTrash,
   IconEdit,
@@ -94,6 +95,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCachedPagedList } from "@/hooks/use-cached-paged-list";
 import TagInputWithSuggestions from "@/components/Common/TagInputWithSuggestions";
 import ShortlinkTagsDialog from "@/components/Shortener/ShortlinkTagsDialog";
+import ShortLinkAnalyticsDialog from "@/components/Shortener/ShortLinkAnalyticsDialog";
 import { getBadgeColorStyles } from "@/lib/tag-colors";
 import { formatTagName, normalizeTagName } from "@/lib/tag-names";
 
@@ -114,6 +116,8 @@ const emptyUtm: UTMParams = {
   term: "",
   content: "",
 };
+
+const MAX_COMPARE_ANALYTICS_LINKS = 5;
 
 const buildUtmUrl = (baseUrl: string, utm: UTMParams) => {
   if (!baseUrl.trim()) return baseUrl;
@@ -164,6 +168,11 @@ export default function ShortenerClient({
     Record<string, boolean>
   >({});
   const [favoriteLoading, setFavoriteLoading] = useState<boolean>(false);
+  const [bulkAddTagOpen, setBulkAddTagOpen] = useState(false);
+  const [bulkTagValue, setBulkTagValue] = useState("");
+  const [bulkAddTagLoading, setBulkAddTagLoading] = useState(false);
+  const [analyticsDialogOpen, setAnalyticsDialogOpen] = useState(false);
+  const [analyticsLinkIds, setAnalyticsLinkIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [reloadTick, setReloadTick] = useState(0);
   const seq = useRef(0);
@@ -282,6 +291,42 @@ export default function ShortenerClient({
   const clearSelection = clear;
   const toggleAllOnPage = () => togglePage(paginatedItems.map((x) => x.id));
 
+  const openAnalyticsFor = useCallback((ids: string[]) => {
+    const normalized = Array.from(
+      new Set(ids.map((id) => id.trim()).filter(Boolean)),
+    );
+    if (!normalized.length) return;
+    setAnalyticsLinkIds(normalized);
+    setAnalyticsDialogOpen(true);
+  }, []);
+
+  const openLinkAnalytics = useCallback(
+    (id: string) => {
+      openAnalyticsFor([id]);
+    },
+    [openAnalyticsFor],
+  );
+
+  const openCompareAnalytics = useCallback(() => {
+    const uniqueSelected = Array.from(
+      new Set(selectedIds.map((id) => id.trim()).filter(Boolean)),
+    );
+
+    if (uniqueSelected.length < 2) {
+      toast.error("Select at least 2 links to compare analytics");
+      return;
+    }
+
+    if (uniqueSelected.length > MAX_COMPARE_ANALYTICS_LINKS) {
+      toast.error(
+        `You can compare up to ${MAX_COMPARE_ANALYTICS_LINKS} links at once`,
+      );
+      return;
+    }
+
+    openAnalyticsFor(uniqueSelected);
+  }, [openAnalyticsFor, selectedIds]);
+
   useEffect(() => {
     setRefreshing(listLoading);
   }, [listLoading]);
@@ -324,6 +369,10 @@ export default function ShortenerClient({
   };
 
   const paginatedItems = items;
+  const visibleSelectionOrder = useMemo(
+    () => paginatedItems.map((item) => item.id),
+    [paginatedItems],
+  );
 
   const bulkSetVisibility = async (value: boolean) => {
     if (selectedIds.length === 0) return;
@@ -355,6 +404,65 @@ export default function ShortenerClient({
 
   const bulkMakePublic = async () => bulkSetVisibility(true);
   const bulkMakePrivate = async () => bulkSetVisibility(false);
+
+  const bulkAddTag = async () => {
+    if (selectedIds.length === 0 || bulkAddTagLoading) return;
+    const normalizedTag = normalizeTagName(bulkTagValue);
+    if (!normalizedTag) {
+      toast.error("Select a tag to add");
+      return;
+    }
+    setBulkAddTagLoading(true);
+    const toUpdate = [...selectedIds];
+    const tagsById = new Map(
+      items.map((item) => [
+        item.id,
+        Array.isArray(item.tags) ? item.tags : ([] as string[]),
+      ]),
+    );
+    try {
+      const { ok, fail } = await performBulk(toUpdate, async (id) => {
+        let existingTags = tagsById.get(id);
+        if (!existingTags) {
+          const rowRes = await fetch(shortenerUrl(`/${id}`), {
+            cache: "no-store",
+          });
+          if (!rowRes.ok) return rowRes;
+          const payload = (await rowRes.json().catch(() => ({}))) as {
+            data?: Partial<DBShortLink>;
+          };
+          existingTags = Array.isArray(payload.data?.tags)
+            ? (payload.data.tags as string[])
+            : [];
+        }
+        const mergedTags = Array.from(
+          new Set(
+            [...existingTags, normalizedTag]
+              .map((tag) => normalizeTagName(tag))
+              .filter(Boolean),
+          ),
+        );
+        return fetch(shortenerUrl(`/${id}`), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tags: mergedTags }),
+        });
+      });
+      if (fail.length) {
+        toast.error(`Tagged ${ok}/${toUpdate.length}.`, {
+          description: fail[0]?.error || "Some updates failed.",
+        });
+      } else {
+        toast.success(`Added tag to ${ok} short link${ok === 1 ? "" : "s"}.`);
+      }
+    } finally {
+      setBulkAddTagLoading(false);
+      setBulkAddTagOpen(false);
+      setBulkTagValue("");
+      clearSelection();
+      await refresh();
+    }
+  };
 
   const refresh = async () => {
     clearCache();
@@ -609,6 +717,86 @@ export default function ShortenerClient({
             <Button variant="outline" size="sm" onClick={bulkMakePrivate}>
               <IconEyeOff /> Make Private
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openCompareAnalytics}
+              disabled={
+                selectedIds.length < 2 ||
+                selectedIds.length > MAX_COMPARE_ANALYTICS_LINKS
+              }
+              title={
+                selectedIds.length > MAX_COMPARE_ANALYTICS_LINKS
+                  ? `Select up to ${MAX_COMPARE_ANALYTICS_LINKS} links to compare`
+                  : undefined
+              }
+            >
+              Compare Analytics ({selectedIds.length}/
+              {MAX_COMPARE_ANALYTICS_LINKS})
+            </Button>
+            <Dialog open={bulkAddTagOpen} onOpenChange={setBulkAddTagOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={bulkAddTagLoading || availableTags.length === 0}
+                >
+                  <IconTag /> Add Tag
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    Add tag to {selectedCount} selected link
+                    {selectedCount === 1 ? "" : "s"}
+                  </DialogTitle>
+                </DialogHeader>
+                {availableTags.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Create a short link tag first, then try again.
+                  </p>
+                ) : (
+                  <Select value={bulkTagValue} onValueChange={setBulkTagValue}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a tag" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTags.map((tag) => (
+                        <SelectItem key={tag} value={tag}>
+                          {formatTagName(tag)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setBulkAddTagOpen(false)}
+                    disabled={bulkAddTagLoading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={bulkAddTag}
+                    disabled={
+                      bulkAddTagLoading ||
+                      availableTags.length === 0 ||
+                      !normalizeTagName(bulkTagValue)
+                    }
+                  >
+                    {bulkAddTagLoading ? (
+                      <>
+                        <IconLoader className="h-4 w-4 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      "Add Tag"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm">
@@ -665,7 +853,9 @@ export default function ShortenerClient({
                   <TableCell>
                     <Checkbox
                       checked={isSelected(r.id)}
-                      onCheckedChange={() => toggleOne(r.id)}
+                      onCheckedChange={() =>
+                        toggleOne(r.id, { orderedIds: visibleSelectionOrder })
+                      }
                       aria-label={`Select ${r.slug}`}
                     />
                   </TableCell>
@@ -675,7 +865,12 @@ export default function ShortenerClient({
                       selectedCount > 0 && "cursor-pointer",
                     )}
                     onClick={
-                      selectedCount > 0 ? () => toggleOne(r.id) : undefined
+                      selectedCount > 0
+                        ? () =>
+                            toggleOne(r.id, {
+                              orderedIds: visibleSelectionOrder,
+                            })
+                        : undefined
                     }
                   >
                     <div className="flex items-center gap-1">
@@ -758,6 +953,16 @@ export default function ShortenerClient({
 
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => openLinkAnalytics(r.id)}
+                        aria-label="Open analytics"
+                        title="Analytics"
+                      >
+                        <IconChartBar className="h-4 w-4" />
+                      </Button>
                       <EditShortLinkDialog
                         row={r}
                         onSaved={() => refresh()}
@@ -843,6 +1048,12 @@ export default function ShortenerClient({
         page={page}
         totalPages={totalPages}
         onPageChange={setPage}
+      />
+
+      <ShortLinkAnalyticsDialog
+        open={analyticsDialogOpen}
+        onOpenChange={setAnalyticsDialogOpen}
+        linkIds={analyticsLinkIds}
       />
     </PageLayout>
   );

@@ -37,6 +37,7 @@ type SearchParams = Promise<{
   folder?: string;
   tag?: string | string[];
   tags?: string;
+  dupHash?: string;
   favorite?: string;
   kind?: string;
   visibility?: string;
@@ -73,6 +74,7 @@ export default async function VaultServer({
     page,
     pageSize,
     sort,
+    dupHash,
     favorite,
     kind,
   } = await searchParams;
@@ -92,6 +94,7 @@ export default async function VaultServer({
     tags: await parseTags({ sp: searchParams }),
     favorites: favorite === "1",
     kind,
+    contentHash: dupHash,
     visibility,
     page: Number(page || "") || 1,
     pageSize: Number(pageSize || "") || undefined,

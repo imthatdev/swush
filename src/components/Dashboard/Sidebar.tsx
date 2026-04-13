@@ -14,10 +14,13 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
+
 "use client";
+
 import KeyboardShortcuts from "@/components/Common/KeyboardShortcuts";
 import {
   IconBell,
+  IconBookmarks,
   IconChartBar,
   IconLogout,
   IconFolder,
@@ -148,6 +151,13 @@ export function SidebarWrapper({ children }: { children: React.ReactNode }) {
     router.refresh();
   };
 
+  const isMainLinkActive = (href?: string) => {
+    if (!href) return false;
+    const hrefPath = href.split("?")[0];
+    if (!hrefPath) return false;
+    return pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
+  };
+
   const mainUpperLinks = [
     {
       label: "Search",
@@ -185,6 +195,11 @@ export function SidebarWrapper({ children }: { children: React.ReactNode }) {
       label: "Shorten",
       href: "/shortener",
       icon: <IconLinkPlus className="h-4 w-4 shrink-0" />,
+    },
+    {
+      label: "Bookmarks",
+      href: "/bookmarks",
+      icon: <IconBookmarks className="h-4 w-4 shrink-0" />,
     },
     {
       label: "Watchlist",
@@ -269,7 +284,8 @@ export function SidebarWrapper({ children }: { children: React.ReactNode }) {
               <div className="flex flex-col">
                 <div className="flex flex-col gap-2 overflow-y-auto  flex-1 min-h-0">
                   {mainUpperLinks.map((link, idx) => {
-                    const isActive = pathname === link.href;
+                    const isActive = isMainLinkActive(link.href);
+
                     return (
                       <SidebarLink
                         key={idx}

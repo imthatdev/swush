@@ -92,10 +92,12 @@ function hasCustomLimits(u: AdminUser) {
     u.maxStorageMb != null ||
     u.maxUploadMb != null ||
     u.filesLimit != null ||
+    u.bookmarksLimit != null ||
     u.shortLinksLimit != null ||
     u.allowRemoteUpload != null ||
     u.disableApiTokens ||
     u.allowFiles != null ||
+    u.allowBookmarks != null ||
     u.allowShortlinks != null ||
     u.allowWatchlist != null
   );
@@ -123,11 +125,13 @@ function normalizeUser(u: AdminUser): AdminUser {
     maxStorageMb: normLimit(u.maxStorageMb),
     maxUploadMb: normLimit(u.maxUploadMb),
     filesLimit: normLimit(u.filesLimit),
+    bookmarksLimit: normLimit(u.bookmarksLimit),
     shortLinksLimit: normLimit(u.shortLinksLimit),
     allowRemoteUpload:
       u.allowRemoteUpload == null ? null : Boolean(u.allowRemoteUpload),
     disableApiTokens: Boolean(u.disableApiTokens),
     allowFiles: u.allowFiles == null ? null : Boolean(u.allowFiles),
+    allowBookmarks: u.allowBookmarks == null ? null : Boolean(u.allowBookmarks),
     allowShortlinks:
       u.allowShortlinks == null ? null : Boolean(u.allowShortlinks),
     allowWatchlist: u.allowWatchlist == null ? null : Boolean(u.allowWatchlist),
@@ -164,6 +168,7 @@ export default function AdminUsersClient() {
   const [clearTarget, setClearTarget] = useState<AdminUser | null>(null);
   const [clearOpts, setClearOpts] = useState({
     filesMode: "none" as "none" | "all" | "exceptFavorites",
+    bookmarks: false,
     links: false,
     apiTokens: false,
   });
@@ -187,10 +192,12 @@ export default function AdminUsersClient() {
     maxStorageMb: "",
     maxUploadMb: "",
     filesLimit: "",
+    bookmarksLimit: "",
     shortLinksLimit: "",
     allowRemoteUpload: "",
     disableApiTokens: "false",
     allowFiles: "",
+    allowBookmarks: "",
     allowShortlinks: "",
     allowWatchlist: "",
   });
@@ -207,12 +214,14 @@ export default function AdminUsersClient() {
       maxStorageMb: u.maxStorageMb == null ? "" : String(u.maxStorageMb),
       maxUploadMb: u.maxUploadMb == null ? "" : String(u.maxUploadMb),
       filesLimit: u.filesLimit == null ? "" : String(u.filesLimit),
+      bookmarksLimit: u.bookmarksLimit == null ? "" : String(u.bookmarksLimit),
       shortLinksLimit:
         u.shortLinksLimit == null ? "" : String(u.shortLinksLimit),
       allowRemoteUpload:
         u.allowRemoteUpload == null ? "" : String(u.allowRemoteUpload),
       disableApiTokens: u.disableApiTokens ? "true" : "false",
       allowFiles: u.allowFiles == null ? "" : String(u.allowFiles),
+      allowBookmarks: u.allowBookmarks == null ? "" : String(u.allowBookmarks),
       allowShortlinks:
         u.allowShortlinks == null ? "" : String(u.allowShortlinks),
       allowWatchlist: u.allowWatchlist == null ? "" : String(u.allowWatchlist),
@@ -236,6 +245,7 @@ export default function AdminUsersClient() {
         if (
           f === "allowRemoteUpload" ||
           f === "allowFiles" ||
+          f === "allowBookmarks" ||
           f === "allowShortlinks" ||
           f === "allowWatchlist" ||
           f === "disableApiTokens"
@@ -253,10 +263,12 @@ export default function AdminUsersClient() {
         "maxStorageMb",
         "maxUploadMb",
         "filesLimit",
+        "bookmarksLimit",
         "shortLinksLimit",
         "allowRemoteUpload",
         "disableApiTokens",
         "allowFiles",
+        "allowBookmarks",
         "allowShortlinks",
         "allowWatchlist",
       ];
@@ -543,6 +555,7 @@ export default function AdminUsersClient() {
     setClearSaving(true);
     const options: Record<string, unknown> = {
       links: clearOpts.links,
+      bookmarks: clearOpts.bookmarks,
       apiTokens: clearOpts.apiTokens,
     };
     if (clearOpts.filesMode === "all") options.filesAll = true;
@@ -901,6 +914,9 @@ export default function AdminUsersClient() {
                           MB
                         </div>
                         <div className="text-muted-foreground">
+                          {u.usage?.bookmarks ?? 0} bookmarks
+                        </div>
+                        <div className="text-muted-foreground">
                           {u.usage?.links ?? 0} short links ·{" "}
                           {u.usage?.clicks ?? 0} clicks
                         </div>
@@ -1202,6 +1218,19 @@ export default function AdminUsersClient() {
                                       </label>
                                       <label className="inline-flex items-center gap-2">
                                         <Checkbox
+                                          checked={clearOpts.bookmarks}
+                                          onCheckedChange={(v) =>
+                                            setClearOpts((o) => ({
+                                              ...o,
+                                              bookmarks: !!v,
+                                            }))
+                                          }
+                                          disabled={clearSaving}
+                                        />
+                                        Bookmarks
+                                      </label>
+                                      <label className="inline-flex items-center gap-2">
+                                        <Checkbox
                                           checked={clearOpts.apiTokens}
                                           onCheckedChange={(v) =>
                                             setClearOpts((o) => ({
@@ -1333,6 +1362,25 @@ export default function AdminUsersClient() {
                                       </div>
                                       <div>
                                         <label className="text-xs text-muted-foreground">
+                                          Bookmarks limit
+                                        </label>
+                                        <Input
+                                          type="number"
+                                          min={0}
+                                          step={1}
+                                          value={limitsForm.bookmarksLimit}
+                                          onChange={(e) =>
+                                            setLimitsForm((f) => ({
+                                              ...f,
+                                              bookmarksLimit: e.target.value,
+                                            }))
+                                          }
+                                          placeholder="empty = default"
+                                          disabled={limitsSaving}
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="text-xs text-muted-foreground">
                                           Short links limit
                                         </label>
                                         <Input
@@ -1419,6 +1467,10 @@ export default function AdminUsersClient() {
                                           {
                                             key: "allowFiles",
                                             label: "Allow Files",
+                                          },
+                                          {
+                                            key: "allowBookmarks",
+                                            label: "Allow Bookmarks",
                                           },
                                           {
                                             key: "allowShortlinks",

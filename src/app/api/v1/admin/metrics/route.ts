@@ -21,6 +21,7 @@ import {
   user,
   userInfo,
   files,
+  bookmarks,
   shortLinks,
   tags,
   folders,
@@ -48,6 +49,7 @@ function buildDailySeed(startDate: Date) {
     date,
     users: 0,
     files: 0,
+    bookmarks: 0,
     storageBytes: 0,
     shortLinks: 0,
   }));
@@ -75,6 +77,9 @@ export const GET = withApiError(async function GET() {
   const [filesRow] = await db
     .select({ total: sql<number>`count(*)` })
     .from(files);
+  const [bookmarksRow] = await db
+    .select({ total: sql<number>`count(*)` })
+    .from(bookmarks);
   const [shortLinksRow] = await db
     .select({ total: sql<number>`count(*)` })
     .from(shortLinks);
@@ -149,6 +154,22 @@ export const GET = withApiError(async function GET() {
     hit.shortLinks = Number(row.count) || 0;
   });
 
+  const bookmarksDaily = await db
+    .select({
+      day: sql<string>`to_char(date_trunc('day', ${bookmarks.createdAt}), 'YYYY-MM-DD')`,
+      count: sql<number>`count(*)`,
+    })
+    .from(bookmarks)
+    .where(gte(bookmarks.createdAt, startDate))
+    .groupBy(sql`1`)
+    .orderBy(sql`1`);
+
+  bookmarksDaily.forEach((row) => {
+    const hit = dailyMap.get(row.day);
+    if (!hit) return;
+    hit.bookmarks = Number(row.count) || 0;
+  });
+
   const payload: AdminMetrics = {
     totals: {
       users: Number(usersRow?.total ?? 0),
@@ -156,6 +177,7 @@ export const GET = withApiError(async function GET() {
       admins: Number(adminsRow?.total ?? 0),
       owners: Number(ownersRow?.total ?? 0),
       files: Number(filesRow?.total ?? 0),
+      bookmarks: Number(bookmarksRow?.total ?? 0),
       shortLinks: Number(shortLinksRow?.total ?? 0),
       tags: Number(tagsRow?.total ?? 0),
       folders: Number(foldersRow?.total ?? 0),

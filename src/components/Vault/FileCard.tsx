@@ -143,6 +143,7 @@ export default function FileCard({
     }>
   ).folder;
   const folderColor = folderMeta?.color ?? null;
+  const staggerDelayMs = Math.min(Math.max(index, 0), 8) * 35;
   const tagItems = (
     (
       file as Partial<{
@@ -160,7 +161,7 @@ export default function FileCard({
         selected &&
           "ring-2 ring-primary border-primary/70 bg-accent/30 shadow-sm",
       )}
-      style={{ animationDelay: `${index * 100}ms` }}
+      style={{ animationDelay: `${staggerDelayMs}ms` }}
       onClick={
         enableCardSelection
           ? (e) => {

@@ -43,6 +43,7 @@ export function useAppConfig() {
   if (!ctx) {
     return {
       appUrl: "",
+      sharingDomain: "",
       appName: "Swush",
       supportName: "Swush Support",
       supportEmail: "help@swush.local",

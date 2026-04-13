@@ -126,7 +126,6 @@ export async function tmdbGetTitle(type: "movie" | "tv", id: string) {
 
   if (!res.ok) throw new Error(`tmdb get ${type} failed: ${res.status}`);
   const r = await res.json();
-
   return {
     provider: "tmdb" as const,
     mediaType: type,
@@ -172,14 +171,17 @@ export async function tmdbGetSeasonEpisodes(
 ) {
   const { tmdbApiKey } = await getIntegrationSecrets();
   if (!tmdbApiKey) throw new Error("TMDB API key is not set");
+
   const safeTvId = parsePositiveInt(tvId, "tvId");
   if (!Number.isSafeInteger(seasonNumber) || seasonNumber <= 0) {
     throw new Error("Invalid seasonNumber");
   }
+
   const res = await fetchSafeExternalHttp(
     tmdbUrl(`/tv/${safeTvId}/season/${seasonNumber}`, tmdbApiKey),
     { cache: "no-store" },
   );
+
   if (!res.ok) throw new Error(`tmdb get season failed: ${res.status}`);
   const r = await res.json();
   return (r.episodes || []).map(

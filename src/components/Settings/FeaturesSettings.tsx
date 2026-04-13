@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { apiV1 } from "@/lib/api-path";
 
-type FeatureKey = "files" | "shortlinks" | "watchlist" | "meetings";
+type FeatureKey = "bookmarks" | "files" | "shortlinks" | "watchlist";
 
 type FeatureState = {
   isEnabled: boolean;
@@ -35,6 +35,11 @@ const FEATURE_LIST: Array<{
   description: string;
   unavailable?: boolean;
 }> = [
+  {
+    key: "bookmarks",
+    label: "Bookmarks",
+    description: "Save, organize, and share bookmarks.",
+  },
   { key: "files", label: "Files", description: "Upload and manage files." },
   {
     key: "shortlinks",

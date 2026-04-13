@@ -19,6 +19,9 @@
 
 import { useEffect, useRef, useState } from "react";
 
+const LOADING_SHOW_DELAY_MS = 140;
+const LOADING_MIN_VISIBLE_MS = 180;
+
 type CacheEntry<T, Extra> = {
   items: T[];
   total: number;
@@ -88,7 +91,17 @@ export function useCachedPagedList<T, Extra = undefined>(
     }
 
     (async () => {
-      if (!cached) setListLoading(true);
+      let loadingTimer: ReturnType<typeof setTimeout> | null = null;
+      let loadingShownAt = listLoading ? Date.now() : 0;
+
+      if (!cached && loadingShownAt === 0) {
+        loadingTimer = setTimeout(() => {
+          if (!cancelled) {
+            loadingShownAt = Date.now();
+            setListLoading(true);
+          }
+        }, LOADING_SHOW_DELAY_MS);
+      }
       try {
         const result = await fetcher();
         if (cancelled || !result) return;
@@ -108,6 +121,18 @@ export function useCachedPagedList<T, Extra = undefined>(
       } catch {
         if (cancelled) return;
       } finally {
+        if (loadingTimer) clearTimeout(loadingTimer);
+
+        if (loadingShownAt > 0) {
+          const elapsed = Date.now() - loadingShownAt;
+          const remaining = LOADING_MIN_VISIBLE_MS - elapsed;
+          if (remaining > 0) {
+            await new Promise<void>((resolve) => {
+              setTimeout(resolve, remaining);
+            });
+          }
+        }
+
         if (!cancelled) setListLoading(false);
         if (forceReload && setReloadTick) setReloadTick(0);
         if (forceReload && setLoading) setLoading(false);

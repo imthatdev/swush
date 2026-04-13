@@ -58,6 +58,8 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${sora.variable} ${jetBrainsMono.variable} font-sans antialiased scroll-smooth`}
+        data-app-url={publicSettings.appUrl || undefined}
+        data-sharing-domain={publicSettings.sharingDomain || undefined}
       >
         <ThemeProvider>
           <AppConfigProvider value={publicSettings}>

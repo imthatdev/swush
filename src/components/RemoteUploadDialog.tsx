@@ -114,7 +114,10 @@ export default function RemoteUploadDialog({
   };
   const handleRemoveFailed = async () => {
     const failedIds = jobs
-      .filter((job: RemoteUploadJob) => job.status === "failed")
+      .filter(
+        (job: RemoteUploadJob) =>
+          job.status === "failed" || job.status === "dead-letter",
+      )
       .map((job: RemoteUploadJob) => job.id);
     if (failedIds.length === 0) return;
     await deleteJobs(failedIds);
@@ -200,16 +203,21 @@ export default function RemoteUploadDialog({
                       variant={
                         job.status === "completed"
                           ? "default"
-                          : job.status === "failed"
+                          : job.status === "failed" ||
+                              job.status === "dead-letter"
                             ? "destructive"
                             : "secondary"
                       }
                     >
                       {job.status === "completed"
                         ? "Uploaded"
-                        : job.status === "failed"
-                          ? "Failed"
-                          : `Processing (${job.percent}%)`}
+                        : job.status === "dead-letter"
+                          ? "Dead letter"
+                          : job.status === "failed"
+                            ? "Failed"
+                            : job.status === "queued" && job.percent > 0
+                              ? `Retrying (${job.percent}%)`
+                              : `Processing (${job.percent}%)`}
                     </Badge>
                   </div>
                   {job.error && (

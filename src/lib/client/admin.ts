@@ -18,6 +18,7 @@
 import type { AdminUser } from "@/types/admin";
 import type { AdminMetrics } from "@/types/admin-metrics";
 import type { AdminJobRun, AdminJobName } from "@/types/admin-jobs";
+import type { AdminQueueHealth } from "@/types/admin-queue-health";
 import { apiV1 } from "@/lib/api-path";
 import { getApiErrorMessage, readApiError } from "@/lib/client/api-error";
 import { fetchSafeInternalApi } from "@/lib/security/http-client";
@@ -40,6 +41,7 @@ export type AdminListUsersResult = {
 };
 
 export type AdminSettingsPayload = {
+  sharingDomain: string | null;
   maxUploadMb: number;
   maxFilesPerUpload: number;
   allowPublicRegistration: boolean;
@@ -51,6 +53,8 @@ export type AdminSettingsPayload = {
   adminMaxStorageMb: number;
   filesLimitUser: number | null;
   filesLimitAdmin: number | null;
+  bookmarksLimitUser: number | null;
+  bookmarksLimitAdmin: number | null;
   shortLinksLimitUser: number | null;
   shortLinksLimitAdmin: number | null;
   allowedMimePrefixes: string[] | null;
@@ -97,6 +101,14 @@ export async function adminGetMetrics(): Promise<AdminMetrics> {
   if (!res.ok) throw await readApiError(res, "Failed to load metrics");
   const data = await readJson<AdminMetrics>(res);
   if (!data) throw new Error("Failed to load metrics");
+  return data;
+}
+
+export async function adminGetQueueHealth(): Promise<AdminQueueHealth> {
+  const res = await fetch(apiV1("/admin/queues"), { cache: "no-store" });
+  if (!res.ok) throw await readApiError(res, "Failed to load queue health");
+  const data = await readJson<AdminQueueHealth>(res);
+  if (!data) throw new Error("Failed to load queue health");
   return data;
 }
 

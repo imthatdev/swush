@@ -38,6 +38,11 @@ export const API_KEY_SCOPES = [
     description: "Create short links.",
   },
   {
+    id: "bookmarks",
+    label: "Bookmarks",
+    description: "Create and manage bookmarks.",
+  },
+  {
     id: "avatar",
     label: "Avatar upload",
     description: "Upload a profile avatar.",

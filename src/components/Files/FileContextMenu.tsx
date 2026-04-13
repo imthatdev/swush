@@ -64,6 +64,7 @@ import { copyToClipboard } from "@/lib/client/clipboard";
 import { useAppConfig } from "@/components/Providers/AppConfigProvider";
 import { isMedia } from "@/lib/mime-types";
 import ShareQrButton from "@/components/Common/ShareQrButton";
+import { buildShareUrl } from "@/lib/api/helpers";
 
 interface FileContextMenuProps {
   file: Upload;
@@ -78,12 +79,9 @@ export function FileContextMenu({
 }: FileContextMenuProps) {
   const filesUrl = (path = "") => apiV1(`/files${path}`);
   const router = useRouter();
-  const { appUrl } = useAppConfig();
-  const baseUrl = appUrl || "";
+  const { appUrl, sharingDomain } = useAppConfig();
   const resolveUrl = (path: string) => {
-    const base =
-      typeof window !== "undefined" ? window.location.origin : baseUrl;
-    return base ? `${base}${path}` : path;
+    return buildShareUrl(path, { appUrl, sharingDomain });
   };
   const shareLink = resolveUrl(`/v/${file.slug}`);
   const isStreamable =

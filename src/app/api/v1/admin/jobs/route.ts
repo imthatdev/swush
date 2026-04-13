@@ -24,6 +24,7 @@ import { withApiError } from "@/lib/server/api-error";
 import {
   runAnilistWatchingJob,
   runMediaOptimizationJob,
+  runPushSubscriptionCleanupJob,
   runPreviewGenerationJob,
   runStreamGenerationJob,
   runStorageCleanupJob,
@@ -34,6 +35,7 @@ const JOBS = [
   "preview-generation",
   "stream-generation",
   "storage-cleanup",
+  "pwa-subscription-cleanup",
   "anilist-watching",
 ] as const;
 type JobName = (typeof JOBS)[number];
@@ -63,6 +65,7 @@ export const POST = withApiError(async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const job = typeof body?.job === "string" ? body.job : "";
   const limit = Number(body?.limit || 3);
+  const inactiveDays = Number(body?.inactiveDays || 30);
 
   if (!JOBS.includes(job as JobName)) {
     return NextResponse.json({ error: "Invalid job" }, { status: 400 });
@@ -88,6 +91,8 @@ export const POST = withApiError(async function POST(req: NextRequest) {
       result = await runStreamGenerationJob(limit);
     } else if (job === "storage-cleanup") {
       result = await runStorageCleanupJob(limit);
+    } else if (job === "pwa-subscription-cleanup") {
+      result = await runPushSubscriptionCleanupJob(inactiveDays);
     } else {
       result = await runAnilistWatchingJob();
     }

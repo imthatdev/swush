@@ -68,6 +68,8 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   defaultUploadVisibility: "private",
   defaultUploadFolder: null,
   defaultUploadTags: [],
+  defaultBookmarkVisibility: "private",
+  defaultBookmarkTags: [],
   defaultShortlinkVisibility: "private",
   defaultShortlinkTags: [],
   defaultShortlinkMaxClicks: null,
@@ -76,6 +78,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   rememberSettingsTab: true,
   lastSettingsTab: "display",
   sizeFormat: "auto",
+  featureBookmarksEnabled: true,
   featureFilesEnabled: true,
   featureShortlinksEnabled: true,
   featureWatchlistEnabled: true,
@@ -183,8 +186,13 @@ export default function PreferencesSettings() {
   );
   const [uploadTagInput, setUploadTagInput] = useState("");
   const [shortlinkTagInput, setShortlinkTagInput] = useState("");
+  const [bookmarkTagInput, setBookmarkTagInput] = useState("");
+  const [shortlinkTags, setShortlinkTags] = useState<TagItem[]>([]);
+  const [bookmarkTags, setBookmarkTags] = useState<TagItem[]>([]);
+
   const [uploadTags, setUploadTags] = useState<TagItem[]>([]);
   const [uploadFolders, setUploadFolders] = useState<{ name: string }[]>([]);
+
   useEffect(() => {
     let active = true;
     const loadFolders = async () => {
@@ -200,7 +208,6 @@ export default function PreferencesSettings() {
       active = false;
     };
   }, []);
-  const [shortlinkTags, setShortlinkTags] = useState<TagItem[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -216,6 +223,7 @@ export default function PreferencesSettings() {
         const next = { ...DEFAULT_PREFERENCES, ...(data?.settings ?? {}) };
         setPrefs(next);
         setUploadTagInput((next.defaultUploadTags ?? []).join(", "));
+        setBookmarkTagInput((next.defaultBookmarkTags ?? []).join(", "));
         setShortlinkTagInput((next.defaultShortlinkTags ?? []).join(", "));
         if (next.rememberSettingsTab) {
           setTab(next.lastSettingsTab);
@@ -236,9 +244,10 @@ export default function PreferencesSettings() {
   }, []);
 
   const loadTags = async () => {
-    const [uploadRes, shortlinkRes] = await Promise.all([
+    const [uploadRes, shortlinkRes, bookmarkRes] = await Promise.all([
       fetch(apiV1("/tags"), { cache: "no-store" }),
       fetch(apiV1("/shortlink-tags"), { cache: "no-store" }),
+      fetch(apiV1("/bookmark-tags"), { cache: "no-store" }),
     ]);
 
     const uploadData = uploadRes.ok
@@ -247,9 +256,13 @@ export default function PreferencesSettings() {
     const shortlinkData = shortlinkRes.ok
       ? ((await shortlinkRes.json()) as TagItem[])
       : [];
+    const bookmarkData = bookmarkRes.ok
+      ? ((await bookmarkRes.json()) as TagItem[])
+      : [];
 
     setUploadTags(Array.isArray(uploadData) ? uploadData : []);
     setShortlinkTags(Array.isArray(shortlinkData) ? shortlinkData : []);
+    setBookmarkTags(Array.isArray(bookmarkData) ? bookmarkData : []);
   };
 
   useEffect(() => {
@@ -541,6 +554,7 @@ export default function PreferencesSettings() {
               <TabsTrigger value="vault">Vault</TabsTrigger>
               <TabsTrigger value="uploads">Uploads</TabsTrigger>
               <TabsTrigger value="shortlinks">Shortlinks</TabsTrigger>
+              <TabsTrigger value="bookmarks">Bookmarks</TabsTrigger>
             </TabsList>
 
             <TabsContent value="vault" className="grid gap-4">
@@ -733,6 +747,59 @@ export default function PreferencesSettings() {
               </div>
             </TabsContent>
           </Tabs>
+        </TabsContent>
+
+        <TabsContent value="bookmarks" className="grid gap-4">
+          <div className="grid gap-2 rounded-md border p-3">
+            <Label>Default bookmark visibility</Label>
+            <Select
+              value={prefs.defaultBookmarkVisibility}
+              onValueChange={(v) =>
+                update({
+                  defaultBookmarkVisibility:
+                    v as UserPreferences["defaultBookmarkVisibility"],
+                })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="private">Private</SelectItem>
+                <SelectItem value="public">Public</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2 rounded-md border p-3">
+            <div className="flex items-center justify-between gap-3">
+              <Label>Default bookmark tags</Label>
+              <TagCreateDialog
+                label="Create bookmark tag"
+                description="Add a colored tag for bookmarks."
+                endpoint="/bookmark-tags"
+                onCreated={loadTags}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              To create tags, please use the dialog.
+            </p>
+            <TagInputWithSuggestions
+              value={bookmarkTagInput}
+              onChange={(value) => {
+                setBookmarkTagInput(value);
+                update({
+                  defaultBookmarkTags: parseTags(
+                    value,
+                    toTagNames(bookmarkTags),
+                  ),
+                });
+              }}
+              availableTags={toTagNames(bookmarkTags)}
+              tagColors={toTagColors(bookmarkTags)}
+              placeholder="Type to add tags..."
+            />
+          </div>
         </TabsContent>
       </Tabs>
 

@@ -67,6 +67,7 @@ export default function InformationChange() {
 
   const resourceLabels: Record<keyof Summary["resources"], string> = {
     files: "Files",
+    bookmark: "Bookmarks",
     shortLink: "Short Links",
   };
 
@@ -550,7 +551,7 @@ export default function InformationChange() {
           </div>
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-            {(["files", "shortLink"] as const).map((key) => {
+            {(["files", "bookmark", "shortLink"] as const).map((key) => {
               const r = summary?.resources[key];
               return (
                 <div key={key} className="space-y-1">

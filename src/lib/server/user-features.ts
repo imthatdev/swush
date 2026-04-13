@@ -22,12 +22,13 @@ import { db } from "@/db/client";
 import { userInfo, userPreferences } from "@/db/schemas/core-schema";
 import { eq } from "drizzle-orm";
 
-export type UserFeatureKey = "files" | "shortlinks" | "watchlist";
+export type UserFeatureKey = "bookmarks" | "files" | "shortlinks" | "watchlist";
 
 const preferenceKeyMap: Record<
   UserFeatureKey,
   keyof typeof userPreferences.$inferSelect
 > = {
+  bookmarks: "featureBookmarksEnabled",
   files: "featureFilesEnabled",
   shortlinks: "featureShortlinksEnabled",
   watchlist: "featureWatchlistEnabled",
@@ -35,6 +36,7 @@ const preferenceKeyMap: Record<
 
 const allowKeyMap: Record<UserFeatureKey, keyof typeof userInfo.$inferSelect> =
   {
+    bookmarks: "allowBookmarks",
     files: "allowFiles",
     shortlinks: "allowShortlinks",
     watchlist: "allowWatchlist",

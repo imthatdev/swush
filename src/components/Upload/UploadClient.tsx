@@ -49,6 +49,7 @@ import { getApiErrorMessage } from "@/lib/client/api-error";
 import { MaxViewsAction } from "@/lib/server/max-views";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { shareUrl } from "@/lib/api/helpers";
 
 const DEFAULT_NAME_CONVENTION: NameConvention = "original";
 const DEFAULT_SLUG_CONVENTION: SlugConvention = "funny";
@@ -91,7 +92,7 @@ export default function UploadClient() {
     allowRemoteUpload,
     apply: applySummary,
   } = useUploadSummary();
-  const { appUrl, uploadChunkThresholdMb } = useAppConfig();
+  const { appUrl, sharingDomain, uploadChunkThresholdMb } = useAppConfig();
 
   const { prefs, loading: prefsLoading } = useUserPreferences();
   const { features, loading: featuresLoading } = useUserFeatures();
@@ -571,13 +572,6 @@ export default function UploadClient() {
   };
 
   const applyUploadResult = (idx: number, result: UploadApiResponse) => {
-    const shareUrl = (slug: string) => {
-      const base =
-        appUrl || (typeof window !== "undefined" ? window.location.origin : "");
-      return base
-        ? `${base}/x/${encodeURIComponent(slug)}`
-        : `/x/${encodeURIComponent(slug)}`;
-    };
     updateFileAt(idx, (prev) => ({
       id: result.id ?? prev.id,
       slug: result.slug ?? prev.slug,
@@ -599,7 +593,12 @@ export default function UploadClient() {
       folderName: result.folder ?? prev.folderName ?? "",
       tags: Array.isArray(result.tags) ? result.tags : (prev.tags ?? []),
       url: result.url ?? prev.url,
-      shareUrl: result.slug ? shareUrl(result.slug) : prev.shareUrl,
+      shareUrl: result.slug
+        ? shareUrl("x", encodeURIComponent(result.slug), {
+            appUrl,
+            sharingDomain,
+          })
+        : prev.shareUrl,
       progress: 100,
       uploaded: true,
       error: undefined,

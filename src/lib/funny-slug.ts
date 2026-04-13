@@ -18,7 +18,12 @@
 import "server-only";
 
 import { db } from "@/db/client";
-import { files, folders, shortLinks } from "@/db/schemas/core-schema";
+import {
+  bookmarks,
+  files,
+  folders,
+  shortLinks,
+} from "@/db/schemas/core-schema";
 import { eq } from "drizzle-orm";
 
 const A = [
@@ -162,7 +167,7 @@ const D = [
 
 const rand = <T>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)] as T;
 
-export type SlugTable = "files" | "folders" | "shortLinks";
+export type SlugTable = "files" | "folders" | "bookmarks" | "shortLinks";
 
 async function existsIn(table: SlugTable, slug: string): Promise<boolean> {
   switch (table) {
@@ -175,6 +180,12 @@ async function existsIn(table: SlugTable, slug: string): Promise<boolean> {
     case "folders": {
       const hit = await db.query.folders.findFirst({
         where: eq(folders.shareSlug, slug),
+      });
+      return !!hit;
+    }
+    case "bookmarks": {
+      const hit = await db.query.bookmarks.findFirst({
+        where: eq(bookmarks.slug, slug),
       });
       return !!hit;
     }

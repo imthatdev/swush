@@ -18,6 +18,8 @@
 import "server-only";
 
 import path from "path";
+import { Agent as HttpAgent } from "http";
+import { Agent as HttpsAgent } from "https";
 import { createReadStream, createWriteStream } from "fs";
 import { mkdir, rm, stat as statAsync, unlink, writeFile } from "fs/promises";
 import { pipeline } from "stream/promises";
@@ -37,6 +39,7 @@ import {
   type ServiceInputTypes,
   type ServiceOutputTypes,
 } from "@aws-sdk/client-s3";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
 import type { Command } from "@smithy/types";
 import { getStorageConfig } from "@/lib/server/storage-config";
 
@@ -85,12 +88,26 @@ async function ensureS3Client() {
     forcePathStyle: config.s3.forcePathStyle,
     accessKeyId: config.s3.accessKeyId ?? null,
     secretAccessKey: config.s3.secretAccessKey ?? null,
+    maxSockets: config.s3.maxSockets,
+    socketAcquisitionWarningTimeoutMs:
+      config.s3.socketAcquisitionWarningTimeoutMs,
   });
   if (!s3Client || s3ClientKey !== key) {
+    const maxSockets = Math.max(1, config.s3.maxSockets);
+    const socketAcquisitionWarningTimeout = Math.max(
+      1,
+      config.s3.socketAcquisitionWarningTimeoutMs,
+    );
+
     s3Client = new S3Client({
       region: config.s3.region,
       endpoint: config.s3.endpoint,
       forcePathStyle: config.s3.forcePathStyle,
+      requestHandler: new NodeHttpHandler({
+        httpAgent: new HttpAgent({ keepAlive: true, maxSockets }),
+        httpsAgent: new HttpsAgent({ keepAlive: true, maxSockets }),
+        socketAcquisitionWarningTimeout,
+      }),
       credentials:
         config.s3.accessKeyId && config.s3.secretAccessKey
           ? {

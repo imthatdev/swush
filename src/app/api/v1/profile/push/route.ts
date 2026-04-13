@@ -19,13 +19,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db/client";
 import { pushSubscriptions } from "@/db/schemas";
-import { eq } from "drizzle-orm";
-import { isVapidConfigured, sendPushToUser } from "@/lib/server/push";
+import { and, eq } from "drizzle-orm";
+import {
+  isVapidConfigured,
+  listPushSubscriptionsForUser,
+  sendPushToUser,
+} from "@/lib/server/push";
 import { withApiError } from "@/lib/server/api-error";
 
 export const runtime = "nodejs";
 
 type SubscriptionPayload = {
+  id?: string;
+  subscriptionId?: string;
   endpoint?: string;
   keys?: {
     p256dh?: string;
@@ -50,12 +56,9 @@ export const GET = withApiError(async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const rows = await db
-    .select({ endpoint: pushSubscriptions.endpoint })
-    .from(pushSubscriptions)
-    .where(eq(pushSubscriptions.userId, session.user.id));
+  const subscriptions = await listPushSubscriptionsForUser(session.user.id);
 
-  return NextResponse.json({ subscriptions: rows });
+  return NextResponse.json({ subscriptions });
 });
 
 export const POST = withApiError(async function POST(req: NextRequest) {
@@ -67,7 +70,10 @@ export const POST = withApiError(async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as SubscriptionPayload;
   const normalized = normalizeSubscription(body);
   if (!normalized) {
-    return NextResponse.json({ error: "Invalid subscription" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid subscription" },
+      { status: 400 },
+    );
   }
 
   await db
@@ -99,13 +105,35 @@ export const DELETE = withApiError(async function DELETE(req: NextRequest) {
   }
 
   const body = (await req.json().catch(() => ({}))) as SubscriptionPayload;
+  const subscriptionId =
+    typeof body?.subscriptionId === "string"
+      ? body.subscriptionId.trim()
+      : typeof body?.id === "string"
+        ? body.id.trim()
+        : "";
   const endpoint =
     typeof body?.endpoint === "string" ? body.endpoint.trim() : "";
-  if (!endpoint) {
-    return NextResponse.json({ error: "Missing endpoint" }, { status: 400 });
+  if (!subscriptionId && !endpoint) {
+    return NextResponse.json(
+      { error: "Missing subscription id or endpoint" },
+      { status: 400 },
+    );
   }
 
-  await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+  await db
+    .delete(pushSubscriptions)
+    .where(
+      subscriptionId
+        ? and(
+            eq(pushSubscriptions.id, subscriptionId),
+            eq(pushSubscriptions.userId, session.user.id),
+          )
+        : and(
+            eq(pushSubscriptions.endpoint, endpoint),
+            eq(pushSubscriptions.userId, session.user.id),
+          ),
+    );
+
   return NextResponse.json({ status: true });
 });
 
@@ -117,7 +145,7 @@ export const PUT = withApiError(async function PUT(req: NextRequest) {
   if (!isVapidConfigured()) {
     return NextResponse.json(
       { error: "VAPID keys not configured" },
-      { status: 500 }
+      { status: 500 },
     );
   }
   const body = (await req.json().catch(() => ({}))) as {

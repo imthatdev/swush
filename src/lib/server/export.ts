@@ -21,7 +21,7 @@ import archiver from "archiver";
 import path from "path";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { files, shortLinks } from "@/db/schemas";
+import { files, shortLinks, bookmarks } from "@/db/schemas";
 import { getDefaultStorageDriver, readFromStorage } from "@/lib/storage";
 
 function toCell(value: unknown) {
@@ -86,12 +86,15 @@ export async function appendExportData(
   options?: ExportOptions | null,
 ) {
   const opts = normalizeOptions(options);
-  const [shortLinkRows, fileRows] = await Promise.all([
+  const [shortLinkRows, fileRows, bookmarkRows] = await Promise.all([
     opts.includeShortLinks
       ? db.select().from(shortLinks).where(eq(shortLinks.userId, userId))
       : [],
     opts.includeFiles || opts.includeFileBinaries
       ? db.select().from(files).where(eq(files.userId, userId))
+      : [],
+    opts.includeBookmarks
+      ? db.select().from(bookmarks).where(eq(bookmarks.userId, userId))
       : [],
   ]);
 
@@ -104,6 +107,7 @@ export async function appendExportData(
         counts: {
           shortLinks: shortLinkRows.length,
           files: fileRows.length,
+          bookmarks: bookmarkRows.length,
         },
       },
       null,
@@ -160,6 +164,31 @@ export async function appendExportData(
     );
   }
 
+  if (opts.includeBookmarks) {
+    archive.append(
+      toCsv(
+        [
+          "id",
+          "url",
+          "title",
+          "description",
+          "imageUrl",
+          "slug",
+          "tags",
+          "isFavorite",
+          "isPublic",
+          "views",
+          "maxViews",
+          "maxViewsAction",
+          "maxViewsTriggeredAt",
+          "createdAt",
+        ],
+        bookmarkRows,
+      ),
+      { name: "bookmarks.csv" },
+    );
+  }
+
   if (opts.includeFileBinaries) {
     for (const f of fileRows) {
       if (!f.storedName) continue;
@@ -184,6 +213,7 @@ export async function appendExportData(
     counts: {
       shortLinks: shortLinkRows.length,
       files: fileRows.length,
+      bookmarks: bookmarkRows.length,
     },
   };
 }

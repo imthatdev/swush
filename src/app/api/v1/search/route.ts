@@ -20,7 +20,7 @@ import { rateLimit } from "@/lib/security/rate-limit";
 import { getClientIp } from "@/lib/security/ip";
 import { getCurrentUser } from "@/lib/client/user";
 import { db } from "@/db/client";
-import { files } from "@/db/schemas/core-schema";
+import { bookmarks, files } from "@/db/schemas/core-schema";
 import { and, or, ilike, eq } from "drizzle-orm";
 import type { AnyColumn, SQL } from "drizzle-orm";
 import { withApiError } from "@/lib/server/api-error";
@@ -79,7 +79,7 @@ export const GET = withApiError(async function GET(req: NextRequest) {
   };
 
   const take = 5;
-  const [fileRows] = await Promise.all([
+  const [fileRows, bookmarkRows] = await Promise.all([
     db.query.files.findMany({
       where: and(
         eq(files.userId, user.id),
@@ -89,6 +89,19 @@ export const GET = withApiError(async function GET(req: NextRequest) {
         id: true,
         originalName: true,
         slug: true,
+        isFavorite: true,
+      },
+      limit: take,
+    }),
+    db.query.bookmarks.findMany({
+      where: and(
+        eq(bookmarks.userId, user.id),
+        or(likeAny(bookmarks.title), likeAny(bookmarks.url)),
+      ),
+      columns: {
+        id: true,
+        title: true,
+        url: true,
         isFavorite: true,
       },
       limit: take,
@@ -106,6 +119,17 @@ export const GET = withApiError(async function GET(req: NextRequest) {
         isFavorite: Boolean(f.isFavorite),
         slug: f.slug as string,
         href: `/vault?focusId=${f.id}`,
+      })),
+    },
+    {
+      label: "Bookmarks",
+      items: bookmarkRows.map((b) => ({
+        id: b.id,
+        title: b.title || b.url,
+        subtitle: b.url,
+        type: "bookmark",
+        isFavorite: Boolean(b.isFavorite),
+        href: `/bookmarks?focusId=${b.id}`,
       })),
     },
   ].filter((g) => g.items.length);

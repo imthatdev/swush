@@ -60,10 +60,12 @@ export const userInfo = pgTable(
     maxUploadMb: integer("max_upload_mb"),
     filesLimit: integer("files_limit"),
     shortLinksLimit: integer("short_links_limit"),
+    bookmarksLimit: integer("bookmarks_limit"),
     allowRemoteUpload: boolean("allow_remote_upload"),
     disableApiTokens: boolean("disable_api_tokens").notNull().default(false),
     allowFiles: boolean("allow_files"),
     allowShortlinks: boolean("allow_shortlinks"),
+    allowBookmarks: boolean("allow_bookmarks"),
     allowWatchlist: boolean("allow_watchlist"),
     verified: boolean("verified").notNull().default(false),
 
@@ -173,6 +175,10 @@ export const userPreferences = pgTable(
       .default("private"),
     defaultUploadFolder: text("default_upload_folder"),
     defaultUploadTags: text("default_upload_tags").array(),
+    defaultBookmarkVisibility: text("default_bookmark_visibility")
+      .notNull()
+      .default("private"),
+    defaultBookmarkTags: text("default_bookmark_tags").array(),
     defaultShortlinkVisibility: text("default_shortlink_visibility")
       .notNull()
       .default("private"),
@@ -187,6 +193,9 @@ export const userPreferences = pgTable(
       .default(true),
     lastSettingsTab: text("last_settings_tab").notNull().default("display"),
     sizeFormat: text("size_format").notNull().default("auto"),
+    featureBookmarksEnabled: boolean("feature_bookmarks_enabled")
+      .notNull()
+      .default(true),
     featureFilesEnabled: boolean("feature_files_enabled")
       .notNull()
       .default(true),
@@ -407,6 +416,20 @@ export const tags = pgTable(
   (self) => [index("tags_user_name_idx").on(self.userId, self.name)],
 );
 
+export const bookmarkTags = pgTable(
+  "bookmark_tags",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    color: text("color"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (self) => [index("bookmark_tags_user_name_idx").on(self.userId, self.name)],
+);
+
 export const filesToTags = pgTable(
   "files_to_tags",
   {
@@ -429,6 +452,7 @@ export const serverSettings = pgTable("server_settings", {
   id: serial("id").primaryKey(),
 
   appName: text("app_name"),
+  sharingDomain: text("sharing_domain"),
   supportName: text("support_name"),
   supportEmail: text("support_email"),
 
@@ -449,6 +473,8 @@ export const serverSettings = pgTable("server_settings", {
   shortLinksLimitAdmin: integer("short_links_limit_admin")
     .notNull()
     .default(100),
+  bookmarksLimitUser: integer("bookmarks_limit_user").notNull().default(250),
+  bookmarksLimitAdmin: integer("bookmarks_limit_admin").notNull().default(500),
   filesLimitUser: integer("files_limit_user").notNull().default(250),
   filesLimitAdmin: integer("files_limit_admin").notNull().default(500),
 
@@ -496,6 +522,123 @@ export const shortLinks = pgTable(
     index("short_links_user_id_idx").on(self.userId),
     index("short_links_created_at_idx").on(self.createdAt),
     index("short_links_expires_at_idx").on(self.expiresAt),
+  ],
+);
+
+export const shortLinkVisitEvents = pgTable(
+  "short_link_visit_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    shortLinkId: uuid("short_link_id")
+      .notNull()
+      .references(() => shortLinks.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    browserName: text("browser_name"),
+    osName: text("os_name"),
+    referrerHost: text("referrer_host"),
+    referrerUrl: text("referrer_url"),
+    utmSource: text("utm_source"),
+    utmMedium: text("utm_medium"),
+    utmCampaign: text("utm_campaign"),
+    utmTerm: text("utm_term"),
+    utmContent: text("utm_content"),
+    countryCode: text("country_code"),
+    countryName: text("country_name"),
+    cityName: text("city_name"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (self) => [
+    index("short_link_visit_events_link_idx").on(self.shortLinkId),
+    index("short_link_visit_events_user_idx").on(self.userId),
+    index("short_link_visit_events_slug_idx").on(self.slug),
+    index("short_link_visit_events_created_idx").on(self.createdAt),
+    index("short_link_visit_events_browser_idx").on(self.browserName),
+    index("short_link_visit_events_os_idx").on(self.osName),
+    index("short_link_visit_events_referrer_idx").on(self.referrerHost),
+    index("short_link_visit_events_utm_source_idx").on(self.utmSource),
+    index("short_link_visit_events_country_idx").on(self.countryCode),
+    index("short_link_visit_events_city_idx").on(self.cityName),
+  ],
+);
+
+export const bookmarks = pgTable(
+  "bookmarks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+
+    url: text("url").notNull(),
+    title: text("title"),
+    description: text("description"),
+    imageUrl: text("image_url"),
+    slug: text("slug").unique(),
+    tags: text("tags").array(),
+    archiveTitle: text("archive_title"),
+    archiveExcerpt: text("archive_excerpt"),
+    archiveByline: text("archive_byline"),
+    archiveSiteName: text("archive_site_name"),
+    archiveLang: text("archive_lang"),
+    archiveText: text("archive_text"),
+    archiveHtml: text("archive_html"),
+    archivedAt: timestamp("archived_at"),
+
+    passwordHash: text("password_hash"),
+    isFavorite: boolean("is_favorite").default(false).notNull(),
+    isPublic: boolean("is_public").default(false),
+    anonymousShareEnabled: boolean("anonymous_share_enabled")
+      .default(false)
+      .notNull(),
+    views: integer("views").default(0),
+    maxViews: integer("max_views"),
+    maxViewsAction: maxViewsAction("max_views_action"),
+    maxViewsTriggeredAt: timestamp("max_views_triggered_at"),
+
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (self) => [
+    index("bookmarks_user_id_idx").on(self.userId),
+    index("bookmarks_created_at_idx").on(self.createdAt),
+    index("bookmarks_url_idx").on(self.url),
+  ],
+);
+
+export const bookmarkRssFeeds = pgTable(
+  "bookmark_rss_feeds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    feedUrl: text("feed_url").notNull(),
+    feedTitle: text("feed_title"),
+    isEnabled: boolean("is_enabled").notNull().default(true),
+    intervalMinutes: integer("interval_minutes").notNull().default(60),
+    maxItemsPerFetch: integer("max_items_per_fetch").notNull().default(10),
+    defaultTags: text("default_tags").array(),
+    snapshotMode: text("snapshot_mode").notNull().default("none"),
+    lastFetchedAt: timestamp("last_fetched_at"),
+    nextFetchAt: timestamp("next_fetch_at").notNull().defaultNow(),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (self) => [
+    uniqueIndex("bookmark_rss_feeds_user_url_idx").on(
+      self.userId,
+      self.feedUrl,
+    ),
+    index("bookmark_rss_feeds_user_idx").on(self.userId),
+    index("bookmark_rss_feeds_next_fetch_idx").on(self.nextFetchAt),
+    index("bookmark_rss_feeds_enabled_idx").on(self.isEnabled),
+    index("bookmark_rss_feeds_created_idx").on(self.createdAt),
   ],
 );
 
@@ -639,9 +782,21 @@ export const userRelations = relations(user, ({ many }) => ({
   files: many(files),
   folders: many(folders),
   shortLinks: many(shortLinks),
+  bookmarks: many(bookmarks),
+  bookmarkRssFeeds: many(bookmarkRssFeeds),
   tags: many(tags, { relationName: "user_tags" }),
   integrationWebhooks: many(integrationWebhooks),
 }));
+
+export const bookmarkRssFeedsRelations = relations(
+  bookmarkRssFeeds,
+  ({ one }) => ({
+    owner: one(user, {
+      fields: [bookmarkRssFeeds.userId],
+      references: [user.id],
+    }),
+  }),
+);
 
 export const filesRelations = relations(files, ({ one, many }) => ({
   owner: one(user, { fields: [files.userId], references: [user.id] }),
@@ -679,8 +834,27 @@ export const filesToTagsRelations = relations(filesToTags, ({ one }) => ({
   tag: one(tags, { fields: [filesToTags.tagId], references: [tags.id] }),
 }));
 
-export const shortLinksRelations = relations(shortLinks, ({ one }) => ({
+export const shortLinksRelations = relations(shortLinks, ({ one, many }) => ({
   owner: one(user, { fields: [shortLinks.userId], references: [user.id] }),
+  visits: many(shortLinkVisitEvents),
+}));
+
+export const shortLinkVisitEventsRelations = relations(
+  shortLinkVisitEvents,
+  ({ one }) => ({
+    shortLink: one(shortLinks, {
+      fields: [shortLinkVisitEvents.shortLinkId],
+      references: [shortLinks.id],
+    }),
+    owner: one(user, {
+      fields: [shortLinkVisitEvents.userId],
+      references: [user.id],
+    }),
+  }),
+);
+
+export const bookmarksRelations = relations(bookmarks, ({ one }) => ({
+  owner: one(user, { fields: [bookmarks.userId], references: [user.id] }),
 }));
 
 export const anilistLinkRelations = relations(anilistLink, ({ one }) => ({
@@ -746,6 +920,10 @@ export const mediaJobs = pgTable(
     status: text("status").notNull().default("queued"),
     kind: text("kind").notNull(),
     quality: integer("quality").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(5),
+    nextRunAt: timestamp("next_run_at").defaultNow().notNull(),
+    deadLetterAt: timestamp("dead_letter_at"),
     outputMimeType: text("output_mime_type"),
     outputSize: integer("output_size"),
     error: text("error"),
@@ -759,6 +937,7 @@ export const mediaJobs = pgTable(
     index("media_jobs_user_idx").on(self.userId),
     index("media_jobs_file_idx").on(self.fileId),
     index("media_jobs_status_idx").on(self.status),
+    index("media_jobs_next_run_idx").on(self.nextRunAt),
     index("media_jobs_created_idx").on(self.createdAt),
   ],
 );
@@ -774,6 +953,10 @@ export const previewJobs = pgTable(
       .notNull()
       .references(() => files.id, { onDelete: "cascade" }),
     status: text("status").notNull().default("queued"),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(5),
+    nextRunAt: timestamp("next_run_at").defaultNow().notNull(),
+    deadLetterAt: timestamp("dead_letter_at"),
     outputMimeType: text("output_mime_type"),
     outputSize: integer("output_size"),
     error: text("error"),
@@ -787,7 +970,39 @@ export const previewJobs = pgTable(
     index("preview_jobs_user_idx").on(self.userId),
     index("preview_jobs_file_idx").on(self.fileId),
     index("preview_jobs_status_idx").on(self.status),
+    index("preview_jobs_next_run_idx").on(self.nextRunAt),
     index("preview_jobs_created_idx").on(self.createdAt),
+  ],
+);
+
+export const bookmarkArchiveJobs = pgTable(
+  "bookmark_archive_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    bookmarkId: uuid("bookmark_id")
+      .notNull()
+      .references(() => bookmarks.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("queued"),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(5),
+    nextRunAt: timestamp("next_run_at").defaultNow().notNull(),
+    deadLetterAt: timestamp("dead_letter_at"),
+    error: text("error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (self) => [
+    index("bookmark_archive_jobs_user_idx").on(self.userId),
+    index("bookmark_archive_jobs_bookmark_idx").on(self.bookmarkId),
+    index("bookmark_archive_jobs_status_idx").on(self.status),
+    index("bookmark_archive_jobs_next_run_idx").on(self.nextRunAt),
+    index("bookmark_archive_jobs_created_idx").on(self.createdAt),
   ],
 );
 
@@ -802,6 +1017,10 @@ export const streamJobs = pgTable(
       .notNull()
       .references(() => files.id, { onDelete: "cascade" }),
     status: text("status").notNull().default("queued"),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(5),
+    nextRunAt: timestamp("next_run_at").defaultNow().notNull(),
+    deadLetterAt: timestamp("dead_letter_at"),
     quality: integer("quality"),
     outputMimeType: text("output_mime_type"),
     outputSize: integer("output_size"),
@@ -816,6 +1035,7 @@ export const streamJobs = pgTable(
     index("stream_jobs_user_idx").on(self.userId),
     index("stream_jobs_file_idx").on(self.fileId),
     index("stream_jobs_status_idx").on(self.status),
+    index("stream_jobs_next_run_idx").on(self.nextRunAt),
     index("stream_jobs_created_idx").on(self.createdAt),
   ],
 );
@@ -908,15 +1128,28 @@ export const importRuns = pgTable(
   ],
 );
 
-export const remoteUploadJobs = pgTable("remote_upload_jobs", {
-  id: text("id").primaryKey(),
-  userId: text("user_id").notNull(),
-  url: text("url").notNull(),
-  name: text("name"),
-  status: text("status").notNull(),
-  percent: integer("percent").notNull(),
-  fileId: text("file_id"),
-  error: text("error"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export const remoteUploadJobs = pgTable(
+  "remote_upload_jobs",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    url: text("url").notNull(),
+    name: text("name"),
+    status: text("status").notNull(),
+    percent: integer("percent").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(5),
+    nextRunAt: timestamp("next_run_at").notNull().defaultNow(),
+    deadLetterAt: timestamp("dead_letter_at"),
+    fileId: text("file_id"),
+    error: text("error"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (self) => [
+    index("remote_upload_jobs_user_idx").on(self.userId),
+    index("remote_upload_jobs_status_idx").on(self.status),
+    index("remote_upload_jobs_next_run_idx").on(self.nextRunAt),
+    index("remote_upload_jobs_created_idx").on(self.createdAt),
+  ],
+);

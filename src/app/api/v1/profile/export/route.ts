@@ -21,7 +21,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db/client";
 import { exportJobs } from "@/db/schemas";
 import type { ExportOptions } from "@/lib/server/export";
-import { runExportJob } from "@/lib/server/export-jobs";
+import { kickExportRunner } from "@/lib/server/export-jobs";
 import { deleteFileFromStorage } from "@/lib/storage";
 import { withApiError } from "@/lib/server/api-error";
 
@@ -78,16 +78,13 @@ export const POST = withApiError(async function POST(req: NextRequest) {
     .select({ id: exportJobs.id })
     .from(exportJobs)
     .where(
-      and(
-        eq(exportJobs.userId, userId),
-        eq(exportJobs.status, "processing")
-      )
+      and(eq(exportJobs.userId, userId), eq(exportJobs.status, "processing")),
     )
     .limit(1);
   if (active.length) {
     return NextResponse.json(
       { error: "Export already in progress" },
-      { status: 409 }
+      { status: 409 },
     );
   }
 
@@ -102,7 +99,9 @@ export const POST = withApiError(async function POST(req: NextRequest) {
     })
     .returning();
 
-  void runExportJob(row.id, userId);
+  setImmediate(() => {
+    void kickExportRunner({ jobId: row.id }).catch(() => {});
+  });
 
   return NextResponse.json({ id: row.id, status: row.status });
 });
@@ -121,7 +120,12 @@ export const DELETE = withApiError(async function DELETE(req: NextRequest) {
     ? await db
         .select()
         .from(exportJobs)
-        .where(and(eq(exportJobs.userId, session.user.id), eq(exportJobs.status, status)))
+        .where(
+          and(
+            eq(exportJobs.userId, session.user.id),
+            eq(exportJobs.status, status),
+          ),
+        )
     : await db
         .select()
         .from(exportJobs)
@@ -131,7 +135,7 @@ export const DELETE = withApiError(async function DELETE(req: NextRequest) {
     if (row.storedName) {
       await deleteFileFromStorage(
         { userId: session.user.id, storedName: row.storedName },
-        { driver: (row.storageDriver || "local") as "local" | "s3" }
+        { driver: (row.storageDriver || "local") as "local" | "s3" },
       );
     }
   }
@@ -139,7 +143,12 @@ export const DELETE = withApiError(async function DELETE(req: NextRequest) {
   if (status) {
     await db
       .delete(exportJobs)
-      .where(and(eq(exportJobs.userId, session.user.id), eq(exportJobs.status, status)));
+      .where(
+        and(
+          eq(exportJobs.userId, session.user.id),
+          eq(exportJobs.status, status),
+        ),
+      );
   } else {
     await db.delete(exportJobs).where(eq(exportJobs.userId, session.user.id));
   }
