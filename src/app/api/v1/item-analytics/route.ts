@@ -1,0 +1,70 @@
+/*
+ *   Copyright (c) 2026 Laith Alkhaddam aka Iconical.
+ *   All rights reserved.
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/client/user";
+import { withApiError } from "@/lib/server/api-error";
+import {
+  getItemAnalyticsReport,
+  parseItemAnalyticsRange,
+} from "@/lib/server/item-analytics-report";
+import type { ItemAnalyticsType } from "@/lib/server/item-analytics";
+
+const ITEM_TYPES = new Set<ItemAnalyticsType>([
+  "file",
+  "bookmark",
+  "short_link",
+]);
+
+export const GET = withApiError(async function GET(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const itemId = (searchParams.get("itemId") || "").trim();
+  const itemTypeRaw = (searchParams.get("itemType") || "").trim();
+  const range = parseItemAnalyticsRange(searchParams.get("range"));
+  const timeZone = searchParams.get("tz");
+
+  if (!itemId || !itemTypeRaw) {
+    return NextResponse.json(
+      { error: "itemId and itemType are required" },
+      { status: 400 },
+    );
+  }
+
+  if (!ITEM_TYPES.has(itemTypeRaw as ItemAnalyticsType)) {
+    return NextResponse.json({ error: "Invalid itemType" }, { status: 400 });
+  }
+
+  const itemType = itemTypeRaw as ItemAnalyticsType;
+  const data = await getItemAnalyticsReport({
+    userId: user.id,
+    itemId,
+    itemType,
+    range,
+    timeZone,
+  });
+
+  if (!data) {
+    return NextResponse.json({ error: "Item not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ data });
+});

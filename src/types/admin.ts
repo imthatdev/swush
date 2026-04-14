@@ -40,6 +40,7 @@ export interface AdminUser {
   disableApiTokens: boolean;
   twoFactor: boolean;
   verified: boolean;
+  emailVerified: boolean;
   usage: {
     files: number;
     bookmarks: number;

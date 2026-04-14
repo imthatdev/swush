@@ -72,9 +72,9 @@ export default function PasskeysManager() {
   const [addOpen, setAddOpen] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [newName, setNewName] = useState("");
-  const [attachment, setAttachment] = useState<"platform" | "cross-platform">(
-    "cross-platform",
-  );
+  const [attachment, setAttachment] = useState<
+    "any" | "platform" | "cross-platform"
+  >("any");
 
   const [renameTarget, setRenameTarget] = useState<PasskeyItem | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -115,9 +115,12 @@ export default function PasskeysManager() {
     }
     setAddLoading(true);
     try {
+      const authenticatorAttachment =
+        attachment === "any" ? undefined : attachment;
       const { error } = await authClient.passkey.addPasskey({
         name,
-        authenticatorAttachment: attachment,
+        ...(authenticatorAttachment ? { authenticatorAttachment } : undefined),
+        returnWebAuthnResponse: false,
       });
       if (error) {
         toast.error(error.message || "Failed to add passkey");
@@ -219,7 +222,7 @@ export default function PasskeysManager() {
                   id="passkey-name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Work laptop"
+                  placeholder="MacBook Pro"
                 />
               </div>
               <div className="grid gap-2">
@@ -227,13 +230,18 @@ export default function PasskeysManager() {
                 <Select
                   value={attachment}
                   onValueChange={(value) =>
-                    setAttachment(value as "platform" | "cross-platform")
+                    setAttachment(
+                      value as "any" | "platform" | "cross-platform",
+                    )
                   }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select device type" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="any">
+                      Any provider (recommended)
+                    </SelectItem>
                     <SelectItem value="platform">This device</SelectItem>
                     <SelectItem value="cross-platform">
                       External security key
@@ -276,8 +284,7 @@ export default function PasskeysManager() {
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {pk.deviceType ? `${pk.deviceType} • ` : ""}
-                  {pk.backedUp ? "Backed up" : "Not backed up"} • Created{" "}
-                  {formatDate(pk.createdAt)}
+                  Created {formatDate(pk.createdAt)}
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">

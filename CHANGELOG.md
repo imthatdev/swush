@@ -11,6 +11,55 @@ This project follows [Semantic Versioning](https://iconical.dev/versioning).
 
 ---
 
+## v1.3.0 – Sharing Domain Guard, Analytics & Platform Polish 🩹
+
+**Released: April 14, 2026**
+
+### 🌐 Sharing Domain & Routing
+- Introduced configurable sharing-domain fallback URL for invalid share routes.
+- Hardened proxy behavior to enforce sharing domains as share-only surfaces while preserving valid paths.
+- Unified proxy path matching logic for improved consistency and maintainability.
+- Fixed public view tracking on sharing domains and ensured `/api/*` routes resolve correctly before fallback handling.
+- Improved API origin handling to support same-origin and configured sharing domains.
+
+### 📊 Analytics & Metrics
+- Enhanced analytics system with improved tracking reliability and accuracy across domains.
+- Fixed inconsistencies in view counting, especially for sharing-domain traffic.
+- Improved internal metrics handling to better reflect real usage patterns.
+
+### ⚙️ Settings & UX Improvements
+- Refined Applications UI with clearer separation between PWA and Browser Extensions.
+- Added branded Chrome and Firefox install actions.
+- Improved homepage CTA layout with better hierarchy and spacing.
+
+### 🔐 Passkey Reliability
+- Separated conditional autofill from explicit passkey sign-in for improved UX.
+- Relaxed registration constraints to improve cross-device compatibility.
+
+### 🗄️ Admin & Data Model
+- Added sharing-domain fallback URL to admin settings (UI, validation, persistence).
+- Introduced database migration for new settings field.
+- Added manual email verification with moderation context and audit logging.
+- Improved admin user visibility with explicit email verification states.
+- Hardened PATCH validation to prevent failures from partial updates.
+
+### 🧭 Vault Layout & Scroll Fixes
+- Fixed overflow issue causing unintended page scrolling in `/vault`.
+- Properly contained scrolling within the Vault layout.
+- Moved layout containment to dashboard shell for cleaner behavior.
+
+### 📧 Auth & API Improvements
+- Improved messaging for unverified accounts with clearer support guidance.
+- Normalized API error handling to surface actionable validation feedback.
+- Fixed async route param handling in admin APIs.
+
+### 🐳 Build & Runtime
+- Switched production builds to webpack mode for improved compatibility.
+- Externalized `file-type` and improved MIME detection via dynamic imports.
+- Updated Docker image to include required migration and schema assets.
+
+---
+
 v1.2.1 – API Key Ownership Fix 🔑
 
 Released: April 13, 2026

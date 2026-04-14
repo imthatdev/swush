@@ -273,8 +273,8 @@ export function SidebarWrapper({ children }: { children: React.ReactNode }) {
       <KeyboardShortcuts />
       <div
         className={cn(
-          "mx-auto flex w-full max-w-full flex-1 flex-col bg-secondary border-0 md:border border-border md:flex-row",
-          "h-svh overflow-hidden ",
+          "mx-auto flex w-full max-w-full flex-1 flex-col bg-secondary md:flex-row",
+          "h-svh overflow-hidden contain-[layout_size]",
         )}
       >
         <Sidebar open={open} setOpen={setOpen} animate={true}>
@@ -282,7 +282,7 @@ export function SidebarWrapper({ children }: { children: React.ReactNode }) {
             <div className="flex flex-col space-y-4 overflow-x-hidden min-h-0">
               <Logo />
               <div className="flex flex-col">
-                <div className="flex flex-col gap-2 overflow-y-auto  flex-1 min-h-0">
+                <div className="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0">
                   {mainUpperLinks.map((link, idx) => {
                     const isActive = isMainLinkActive(link.href);
 

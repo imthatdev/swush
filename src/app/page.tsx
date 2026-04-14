@@ -15,7 +15,11 @@
  *   limitations under the License.
  */
 
-import { IconAlertCircle, IconBrandChrome } from "@tabler/icons-react";
+import {
+  IconAlertCircle,
+  IconBrandChrome,
+  IconBrandFirefox,
+} from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { getCurrentSession } from "@/lib/client/user";
 import { Logo } from "@/components/Common/Logo";
@@ -23,6 +27,11 @@ import Link from "next/link";
 import { getVersionInfo } from "@/lib/version";
 import { getPublicRuntimeSettings } from "@/lib/server/runtime-settings";
 import ExternalLayout from "@/components/Common/ExternalLayout";
+
+const CHROME_EXTENSION_URL =
+  "https://chromewebstore.google.com/detail/swush-companion/jgipkeccibhgdfhoknfggljdmdodkjop";
+const FIREFOX_EXTENSION_URL =
+  "https://addons.mozilla.org/en-US/firefox/addon/swush-companion/";
 
 export default async function Home() {
   const session = await getCurrentSession();
@@ -42,20 +51,34 @@ export default async function Home() {
           Secure. Private. Share files with confidence. <br />
           Self-hosted simplicity meets powerful privacy.
         </p>
-        <div className="flex gap-4 justify-center flex-col sm:flex-row">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto">
           {session ? (
-            <Button href="/vault">Go to Dashboard</Button>
+            <Button href="/vault" className="sm:col-span-2">
+              Go to Dashboard
+            </Button>
           ) : (
-            <Button href="/login">Login</Button>
+            <Button href="/login" className="sm:col-span-2">
+              Login
+            </Button>
           )}
-          <Button asChild variant="outline" className="gap-1">
+          <Button asChild variant="outline" className="gap-1 w-full">
             <a
-              href="https://chromewebstore.google.com/detail/jgipkeccibhgdfhoknfggljdmdodkjop?utm_source=item-share-cb"
+              href={CHROME_EXTENSION_URL}
               target="_blank"
               rel="noreferrer noopener"
               aria-label="Install Swush Companion for Chrome"
             >
               <IconBrandChrome size={18} /> Chrome Extension
+            </a>
+          </Button>
+          <Button asChild variant="outline" className="gap-1 w-full">
+            <a
+              href={FIREFOX_EXTENSION_URL}
+              target="_blank"
+              rel="noreferrer noopener"
+              aria-label="Install Swush Companion for Firefox"
+            >
+              <IconBrandFirefox size={18} /> Firefox Extension
             </a>
           </Button>
         </div>

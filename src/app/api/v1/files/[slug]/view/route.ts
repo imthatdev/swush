@@ -18,12 +18,34 @@
 import { addViewBySlug } from "@/lib/api/files";
 import { NextRequest, NextResponse } from "next/server";
 import { withApiError } from "@/lib/server/api-error";
+import { recordContentViewEvent } from "@/lib/server/content-view-analytics";
+import { recordItemAnalyticsHit } from "@/lib/server/item-analytics";
 
 export const PATCH = withApiError(async function PATCH(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
   const result = await addViewBySlug(slug);
+
+  if (result.status === 200 && result.body && typeof result.body === "object") {
+    const body = result.body as { id?: string; userId?: string; slug?: string };
+    if (body.id && body.userId) {
+      await recordContentViewEvent({
+        ownerUserId: body.userId,
+        itemType: "file",
+        itemId: body.id,
+        slug: body.slug ?? slug,
+        headers: req.headers,
+      });
+      await recordItemAnalyticsHit({
+        itemType: "file",
+        itemId: body.id,
+        headers: req.headers,
+        context: "public_view",
+      });
+    }
+  }
+
   return NextResponse.json(result.body, { status: result.status });
 });

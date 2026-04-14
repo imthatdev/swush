@@ -15,6 +15,13 @@
       "when": 1776050600110,
       "tag": "0001_spooky_jamie_braddock",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776193475588,
+      "tag": "0002_sudden_ikaris",
+      "breakpoints": true
     }
   ]
 }

@@ -43,9 +43,17 @@ export default function PageLayout({
 }: PageLayoutProps) {
   return (
     <main
-      className={cn("flex-1 p-2 overflow-auto h-[90svh] md:h-full ", className)}
+      className={cn(
+        "min-w-0 flex-1 p-2 overflow-auto h-[90svh] md:h-full ",
+        className,
+      )}
     >
-      <div className={cn("mx-auto space-y-2 md:space-y-4", maxWidthClassName)}>
+      <div
+        className={cn(
+          "mx-auto min-w-0 space-y-2 md:space-y-4",
+          maxWidthClassName,
+        )}
+      >
         <div
           className={cn(
             "flex flex-wrap items-center justify-between gap-3",

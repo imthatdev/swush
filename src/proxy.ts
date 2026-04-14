@@ -19,8 +19,63 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
+import { normalizeHttpUrl, normalizeSharingDomain } from "@/lib/api/helpers";
 
 const isProd = process.env.NODE_ENV === "production";
+
+const STATIC_ASSET_PREFIXES = [
+  "/_next",
+  "/static",
+  "/images",
+  "/manifest",
+  "/icon",
+  "/apple-icon",
+  "/og-image",
+] as const;
+
+const STATIC_ASSET_EXACT_PATHS = new Set([
+  "/favicon.ico",
+  "/robots.txt",
+  "/sitemap.xml",
+]);
+
+const AUTH_PUBLIC_PATHS = new Set([
+  "/",
+  "/login",
+  "/register",
+  "/reset-password",
+  "/request-password",
+]);
+
+const SHARE_PUBLIC_PREFIXES = [
+  "/s/",
+  "/b/",
+  "/x/",
+  "/hls/",
+  "/v/",
+  "/l/",
+  "/f/",
+  "/up/",
+] as const;
+
+const EMBEDDABLE_PREFIXES = ["/v/", "/x/", "/hls/"] as const;
+
+const EXTRA_PUBLIC_PATHS = [
+  "/about",
+  "/goodbye",
+  "/setup",
+  "/privacy",
+  "/terms",
+] as const;
+
+const PUBLIC_EXACT_PATHS = new Set([
+  ...EXTRA_PUBLIC_PATHS,
+  ...SHARE_PUBLIC_PREFIXES.map((prefix) => prefix.slice(0, -1)),
+]);
+
+function startsWithAny(pathname: string, prefixes: readonly string[]) {
+  return prefixes.some((prefix) => pathname.startsWith(prefix));
+}
 
 function buildCSP(frameAncestors: "'none'" | "'self'" | string = "'none'") {
   const analyticsScripts = [
@@ -61,52 +116,135 @@ function withCSP(
 }
 
 function isStaticAsset(pathname: string) {
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/static") ||
-    pathname.startsWith("/images") ||
-    pathname === "/favicon.ico" ||
-    pathname === "/robots.txt" ||
-    pathname === "/sitemap.xml" ||
-    pathname.startsWith("/manifest") ||
-    pathname.startsWith("/icon") ||
-    pathname.startsWith("/apple-icon") ||
-    pathname.startsWith("/og-image")
-  ) {
-    return true;
-  }
-  if (/\.[a-zA-Z0-9]+$/.test(pathname)) return true;
-  return false;
+  return (
+    startsWithAny(pathname, STATIC_ASSET_PREFIXES) ||
+    STATIC_ASSET_EXACT_PATHS.has(pathname) ||
+    /\.[a-zA-Z0-9]+$/.test(pathname)
+  );
 }
 
 function isAuthPublicPath(pathname: string) {
-  return (
-    pathname === "/" ||
-    pathname === "/login" ||
-    pathname === "/register" ||
-    pathname === "/reset-password" ||
-    pathname === "/request-password"
-  );
+  return AUTH_PUBLIC_PATHS.has(pathname);
 }
 
 function isEmbeddablePath(pathname: string) {
+  return startsWithAny(pathname, EMBEDDABLE_PREFIXES);
+}
+
+function isPublicPath(pathname: string) {
   return (
-    pathname.startsWith("/v/") ||
-    pathname.startsWith("/x/") ||
-    pathname.startsWith("/hls/")
+    isAuthPublicPath(pathname) ||
+    startsWithAny(pathname, SHARE_PUBLIC_PREFIXES) ||
+    PUBLIC_EXACT_PATHS.has(pathname)
   );
+}
+
+function normalizeHost(value?: string | null) {
+  const raw = (value ?? "").split(",")[0]?.trim().toLowerCase() ?? "";
+  if (!raw) return "";
+  const strippedProtocol = raw.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "");
+  return strippedProtocol.replace(/:\d+$/, "");
+}
+
+function getRequestHost(request: NextRequest) {
+  return normalizeHost(
+    request.headers.get("x-forwarded-host") ||
+      request.headers.get("host") ||
+      request.nextUrl.host,
+  );
+}
+
+function getHostFromUrl(url?: string | null) {
+  if (!url) return "";
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function isValidSharingDomainPath(pathname: string) {
+  return startsWithAny(pathname, SHARE_PUBLIC_PREFIXES);
+}
+
+function resolveFallbackRedirectTarget(
+  fallbackTarget: string,
+  sharingDomainHost: string,
+) {
+  try {
+    const target = new URL(fallbackTarget);
+    const sameShortDomain = target.hostname.toLowerCase() === sharingDomainHost;
+
+    if (!sameShortDomain || isValidSharingDomainPath(target.pathname)) {
+      return target;
+    }
+  } catch {}
+
+  return null;
+}
+
+async function getSharingDomainConfig() {
+  const appUrl = normalizeHttpUrl(
+    process.env.APP_URL || process.env.BETTER_AUTH_URL || "",
+  );
+  let sharingDomain = normalizeSharingDomain(process.env.SHARING_DOMAIN) || "";
+  let fallbackUrl = normalizeHttpUrl(process.env.SHARING_DOMAIN_FALLBACK_URL);
+
+  try {
+    const { getServerSettings } = await import("@/lib/settings");
+    const settings = await getServerSettings();
+    sharingDomain =
+      normalizeSharingDomain(settings.sharingDomain) || sharingDomain;
+    fallbackUrl =
+      normalizeHttpUrl(settings.sharingDomainFallbackUrl) || fallbackUrl;
+  } catch {}
+
+  return {
+    appUrl,
+    sharingDomain,
+    fallbackUrl,
+  };
 }
 
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  const frameAncestors = isEmbeddablePath(pathname) ? "'self'" : "'none'";
 
   if (isStaticAsset(pathname)) return NextResponse.next();
+
+  const frameAncestors = isEmbeddablePath(pathname) ? "'self'" : "'none'";
+
+  const sharingDomainConfig = await getSharingDomainConfig();
+  const requestHost = getRequestHost(request);
+  const sharingDomainHost = getHostFromUrl(sharingDomainConfig.sharingDomain);
+  const isSharingDomainRequest =
+    Boolean(sharingDomainHost) && sharingDomainHost === requestHost;
+
+  if (
+    isSharingDomainRequest &&
+    !pathname.startsWith("/api/") &&
+    !isValidSharingDomainPath(pathname)
+  ) {
+    const fallbackTarget =
+      sharingDomainConfig.fallbackUrl || sharingDomainConfig.appUrl;
+
+    if (fallbackTarget) {
+      const target = resolveFallbackRedirectTarget(
+        fallbackTarget,
+        sharingDomainHost,
+      );
+      if (target) return NextResponse.redirect(target);
+    }
+
+    return new NextResponse("Not found", { status: 404 });
+  }
 
   if (pathname.startsWith("/api/")) {
     const originHeader = request.headers.get("origin");
     const host =
       request.headers.get("x-forwarded-host") || request.headers.get("host");
+    const originHost = getHostFromUrl(originHeader);
+    const sameOriginHost =
+      Boolean(originHost) && Boolean(requestHost) && originHost === requestHost;
 
     const proto =
       request.headers.get("x-forwarded-proto") ||
@@ -114,6 +252,7 @@ export async function proxy(request: NextRequest) {
 
     const allowedOrigins = [
       process.env.APP_URL,
+      sharingDomainConfig.sharingDomain,
       ...(process.env.CORS_ORIGIN?.split(",") ?? []),
     ]
       .map((o) => o?.trim())
@@ -122,8 +261,14 @@ export async function proxy(request: NextRequest) {
     const origin = originHeader ?? `${proto}://${host}`;
     const matchedOrigin = allowedOrigins.find((o) => origin?.startsWith(o));
     const isTauriOrigin = origin.toLowerCase().startsWith("tauri://");
+    const noOriginHeader = !originHeader;
 
-    const isAllowed = !!matchedOrigin || !isProd || isTauriOrigin;
+    const isAllowed =
+      !!matchedOrigin ||
+      sameOriginHost ||
+      noOriginHeader ||
+      !isProd ||
+      isTauriOrigin;
 
     if (!isAllowed) {
       return new NextResponse("Bad Origin", {
@@ -137,7 +282,10 @@ export async function proxy(request: NextRequest) {
       if (isAllowed && origin) {
         if (matchedOrigin) {
           pre.headers.set("Access-Control-Allow-Origin", matchedOrigin);
+        } else if (sameOriginHost) {
+          pre.headers.set("Access-Control-Allow-Origin", origin);
         }
+
         pre.headers.set("Vary", "Origin");
         pre.headers.set(
           "Access-Control-Allow-Methods",
@@ -156,49 +304,18 @@ export async function proxy(request: NextRequest) {
     if (isAllowed && origin) {
       if (matchedOrigin) {
         res.headers.set("Access-Control-Allow-Origin", matchedOrigin);
+      } else if (sameOriginHost) {
+        res.headers.set("Access-Control-Allow-Origin", origin);
       }
+
       res.headers.set("Vary", "Origin");
       res.headers.set("Access-Control-Allow-Credentials", "true");
     }
     return res;
   }
 
-  const isPublic =
-    isAuthPublicPath(pathname) ||
-    pathname.startsWith("/s/") ||
-    pathname.startsWith("/n/") ||
-    pathname.startsWith("/b/") ||
-    pathname.startsWith("/c/") ||
-    pathname.startsWith("/r/") ||
-    pathname.startsWith("/x/") ||
-    pathname.startsWith("/hls/") ||
-    pathname.startsWith("/v/") ||
-    pathname.startsWith("/l/") ||
-    pathname.startsWith("/g/") ||
-    pathname.startsWith("/f/") ||
-    pathname.startsWith("/meet/") ||
-    pathname.startsWith("/up/") ||
-    pathname.startsWith("/u/") ||
-    pathname === "/about" ||
-    pathname === "/goodbye" ||
-    pathname === "/setup" ||
-    pathname === "/privacy" ||
-    pathname === "/terms" ||
-    pathname === "/meet" ||
-    pathname === "/s" ||
-    pathname === "/n" ||
-    pathname === "/b" ||
-    pathname === "/c" ||
-    pathname === "/r" ||
-    pathname === "/x" ||
-    pathname === "/hls" ||
-    pathname === "/l" ||
-    pathname === "/g" ||
-    pathname === "/f" ||
-    pathname === "/u" ||
-    pathname === "/v";
-
-  if (isPublic) return withCSP(NextResponse.next(), frameAncestors);
+  if (isPublicPath(pathname))
+    return withCSP(NextResponse.next(), frameAncestors);
 
   let session: unknown = null;
   try {

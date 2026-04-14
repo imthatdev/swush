@@ -16,6 +16,7 @@
  */
 
 import "server-only";
+
 import { nanoid } from "nanoid";
 import { db } from "@/db/client";
 import { remoteUploadJobs } from "@/db/schemas";
@@ -26,7 +27,6 @@ import { files as filesTable } from "@/db/schemas/core-schema";
 import path from "path";
 import { createReadStream } from "fs";
 import { open, rm, stat } from "fs/promises";
-import { fileTypeFromBuffer } from "file-type";
 import { enqueuePreviewJob, kickPreviewRunner } from "./preview-jobs";
 import { enqueueStreamJob, kickStreamRunner } from "./stream-jobs";
 import { createNotification } from "./notifications";
@@ -347,8 +347,12 @@ async function runRemoteUploadJob(initialJob: RemoteUploadJob) {
 
     const sig =
       bytesRead > 0
-        ? await fileTypeFromBuffer(signatureBytes.slice(0, bytesRead))
+        ? await (async () => {
+            const { fileTypeFromBuffer } = await import("file-type");
+            return fileTypeFromBuffer(signatureBytes.subarray(0, bytesRead));
+          })()
         : null;
+
     const effectiveMime = sig?.mime || "application/octet-stream";
 
     const ext = path.extname(tmp.fileName) || "";

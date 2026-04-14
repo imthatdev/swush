@@ -32,6 +32,7 @@ import {
   IconLockAccess,
   IconWaveSine,
   IconQrcode,
+  IconChartBar,
 } from "@tabler/icons-react";
 import { useState } from "react";
 import {
@@ -65,6 +66,7 @@ import { useAppConfig } from "@/components/Providers/AppConfigProvider";
 import { isMedia } from "@/lib/mime-types";
 import ShareQrButton from "@/components/Common/ShareQrButton";
 import { buildShareUrl } from "@/lib/api/helpers";
+import ItemAnalyticsDialog from "@/components/Common/ItemAnalyticsDialog";
 
 interface FileContextMenuProps {
   file: Upload;
@@ -96,6 +98,7 @@ export function FileContextMenu({
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [hasPassword, setHasPassword] = useState(file.hasPassword);
   const [openQRDialog, setOpenQRDialog] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
   async function toggleVisibility() {
     const res = await fetch(filesUrl(`/${file.slug}`), {
@@ -214,6 +217,10 @@ export function FileContextMenu({
             <DropdownMenuItem onClick={() => setTagsOpen(true)}>
               <IconTags className="mr-2 h-4 w-4 text-amber-500" />
               Categorize
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setAnalyticsOpen(true)}>
+              <IconChartBar className="mr-2 h-4 w-4 text-indigo-500" />
+              View Analytics
             </DropdownMenuItem>
             <DropdownMenuItem onClick={toggleFavorite}>
               {file.isFavorite ? (
@@ -422,6 +429,14 @@ export function FileContextMenu({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ItemAnalyticsDialog
+        open={analyticsOpen}
+        onOpenChange={setAnalyticsOpen}
+        itemType="file"
+        itemId={file.id}
+        itemTitle={file.customName || file.originalName}
+      />
     </>
   );
 }

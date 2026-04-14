@@ -65,6 +65,7 @@ import {
   adminCreateUser,
   adminDisableUser2FA,
   adminListUsers,
+  adminManualVerifyEmail,
   adminRemoveUser,
   adminSetRole,
   adminSetVerified,
@@ -154,6 +155,15 @@ export default function AdminUsersClient() {
   const [banReason, setBanReason] = useState("");
   const [banBusyId, setBanBusyId] = useState<string | null>(null);
   const [verifiedBusyId, setVerifiedBusyId] = useState<string | null>(null);
+  const [manualVerifyOpen, setManualVerifyOpen] = useState(false);
+  const [manualVerifyTarget, setManualVerifyTarget] = useState<AdminUser | null>(
+    null,
+  );
+  const [manualVerifyReason, setManualVerifyReason] = useState("");
+  const [manualVerifyProof, setManualVerifyProof] = useState("");
+  const [manualVerifyBusyId, setManualVerifyBusyId] = useState<string | null>(
+    null,
+  );
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
@@ -457,6 +467,45 @@ export default function AdminUsersClient() {
       prev.map((item) => (item.id === u.id ? { ...item, verified } : item)),
     );
     setVerifiedBusyId(null);
+  }
+
+  async function verifyEmailManually(u: AdminUser) {
+    const reason = manualVerifyReason.trim();
+    const proof = manualVerifyProof.trim();
+    if (!reason || !proof) {
+      toast.error("Reason and proof are required");
+      return;
+    }
+    if (reason.length < 3 || proof.length < 3) {
+      toast.error("Reason and proof must be at least 3 characters");
+      return;
+    }
+    try {
+      setManualVerifyBusyId(u.id);
+      const res = await adminManualVerifyEmail({
+        userId: u.id,
+        reason,
+        proof,
+      });
+      if (!res.ok) {
+        toast.error(res.error || "Failed to verify email");
+        return;
+      }
+      setUsers((prev) =>
+        prev.map((item) =>
+          item.id === u.id ? { ...item, emailVerified: true } : item,
+        ),
+      );
+      setManualVerifyOpen(false);
+      setManualVerifyTarget(null);
+      setManualVerifyReason("");
+      setManualVerifyProof("");
+      toast.success("Email verified manually");
+    } catch (e) {
+      toast.error(`Action failed: ${String(e)}`);
+    } finally {
+      setManualVerifyBusyId(null);
+    }
   }
 
   async function deleteUser(id: string) {
@@ -839,6 +888,17 @@ export default function AdminUsersClient() {
                       <div className="text-xs text-muted-foreground">
                         {u.email}
                       </div>
+                      <div className="mt-1">
+                        <span
+                          className={
+                            u.emailVerified
+                              ? "inline-flex items-center gap-1 rounded-full bg-green-900/30 px-2 py-0.5 text-[11px] text-green-700 dark:text-green-400"
+                              : "inline-flex items-center gap-1 rounded-full bg-amber-900/30 px-2 py-0.5 text-[11px] text-amber-700 dark:text-amber-400"
+                          }
+                        >
+                          {u.emailVerified ? "Email verified" : "Email unverified"}
+                        </span>
+                      </div>
                       <div className="text-xs text-muted-foreground mt-1">
                         Joined {new Date(u.createdAt).toLocaleDateString()}
                         {u.lastLoginAt &&
@@ -1104,6 +1164,112 @@ export default function AdminUsersClient() {
                                 >
                                   2FA disabled
                                 </Button>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              {u.emailVerified ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled
+                                  title="Email is already verified"
+                                  className="w-full"
+                                >
+                                  Email verified
+                                </Button>
+                              ) : (
+                                <Dialog
+                                  open={
+                                    manualVerifyOpen &&
+                                    manualVerifyTarget?.id === u.id
+                                  }
+                                  onOpenChange={(open) => {
+                                    setManualVerifyOpen(open);
+                                    if (!open) {
+                                      setManualVerifyTarget(null);
+                                      setManualVerifyReason("");
+                                      setManualVerifyProof("");
+                                    }
+                                  }}
+                                >
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="w-full"
+                                      disabled={manualVerifyBusyId === u.id}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        setManualVerifyTarget(u);
+                                        setManualVerifyOpen(true);
+                                      }}
+                                    >
+                                      Verify email manually
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>
+                                        Verify email manually for {u.email}?
+                                      </DialogTitle>
+                                    </DialogHeader>
+                                    <div className="grid gap-3">
+                                      <div className="grid gap-1.5">
+                                        <label className="text-sm text-muted-foreground">
+                                          Reason
+                                        </label>
+                                        <Textarea
+                                          value={manualVerifyReason}
+                                          onChange={(e) =>
+                                            setManualVerifyReason(e.target.value)
+                                          }
+                                          placeholder="Why are we verifying this email manually?"
+                                          disabled={manualVerifyBusyId === u.id}
+                                        />
+                                      </div>
+                                      <div className="grid gap-1.5">
+                                        <label className="text-sm text-muted-foreground">
+                                          Proof
+                                        </label>
+                                        <Textarea
+                                          value={manualVerifyProof}
+                                          onChange={(e) =>
+                                            setManualVerifyProof(e.target.value)
+                                          }
+                                          placeholder="What proof was provided (e.g. support ticket, signed request, ownership evidence)?"
+                                          disabled={manualVerifyBusyId === u.id}
+                                        />
+                                      </div>
+                                    </div>
+                                    <DialogFooter>
+                                      <Button
+                                        onClick={() => {
+                                          setManualVerifyOpen(false);
+                                          setManualVerifyTarget(null);
+                                          setManualVerifyReason("");
+                                          setManualVerifyProof("");
+                                        }}
+                                      >
+                                        Cancel
+                                      </Button>
+                                      <Button
+                                        onClick={() => void verifyEmailManually(u)}
+                                        disabled={
+                                          manualVerifyBusyId === u.id ||
+                                          manualVerifyReason.trim().length < 3 ||
+                                          manualVerifyProof.trim().length < 3
+                                        }
+                                      >
+                                        {manualVerifyBusyId === u.id
+                                          ? "Verifying..."
+                                          : "Verify email"}
+                                      </Button>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
                               )}
                             </DropdownMenuItem>
                             <DropdownMenuItem

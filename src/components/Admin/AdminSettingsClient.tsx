@@ -66,6 +66,7 @@ import { HelpTip } from "./Docs/HelpTip";
 
 const SettingsSchema = z.object({
   sharingDomain: z.string().max(255).optional(),
+  sharingDomainFallbackUrl: z.string().max(2048).optional(),
   maxUploadMb: z.coerce.number().int().min(1).max(102400),
   maxFilesPerUpload: z.coerce.number().int().min(1).max(1000),
   allowPublicRegistration: z.boolean(),
@@ -95,8 +96,14 @@ const SettingsSchema = z.object({
 
   filesLimitUser: z.coerce.number().int().min(1).max(10000).nullable(),
   filesLimitAdmin: z.coerce.number().int().min(1).max(10000).nullable(),
+  notesLimitUser: z.coerce.number().int().min(1).max(10000).nullable(),
+  notesLimitAdmin: z.coerce.number().int().min(1).max(10000).nullable(),
   bookmarksLimitUser: z.coerce.number().int().min(1).max(10000).nullable(),
   bookmarksLimitAdmin: z.coerce.number().int().min(1).max(10000).nullable(),
+  snippetsLimitUser: z.coerce.number().int().min(1).max(10000).nullable(),
+  snippetsLimitAdmin: z.coerce.number().int().min(1).max(10000).nullable(),
+  recipesLimitUser: z.coerce.number().int().min(1).max(10000).nullable(),
+  recipesLimitAdmin: z.coerce.number().int().min(1).max(10000).nullable(),
   shortLinksLimitUser: z.coerce.number().int().min(1).max(10000).nullable(),
   shortLinksLimitAdmin: z.coerce.number().int().min(1).max(10000).nullable(),
 
@@ -211,6 +218,7 @@ export default function AdminSettingsClient({
     resolver: zodResolver(SettingsSchema) as unknown as Resolver<FormValues>,
     defaultValues: {
       sharingDomain: initialValues.sharingDomain ?? "",
+      sharingDomainFallbackUrl: initialValues.sharingDomainFallbackUrl ?? "",
       maxUploadMb: initialValues.maxUploadMb,
       maxFilesPerUpload: initialValues.maxFilesPerUpload,
       allowPublicRegistration: initialValues.allowPublicRegistration,
@@ -223,8 +231,14 @@ export default function AdminSettingsClient({
       adminMaxStorageMb: initialValues.adminMaxStorageMb,
       filesLimitUser: initialValues.filesLimitUser,
       filesLimitAdmin: initialValues.filesLimitAdmin,
+      notesLimitUser: initialValues.notesLimitUser,
+      notesLimitAdmin: initialValues.notesLimitAdmin,
       bookmarksLimitUser: initialValues.bookmarksLimitUser,
       bookmarksLimitAdmin: initialValues.bookmarksLimitAdmin,
+      snippetsLimitUser: initialValues.snippetsLimitUser,
+      snippetsLimitAdmin: initialValues.snippetsLimitAdmin,
+      recipesLimitUser: initialValues.recipesLimitUser,
+      recipesLimitAdmin: initialValues.recipesLimitAdmin,
       shortLinksLimitUser: initialValues.shortLinksLimitUser,
       shortLinksLimitAdmin: initialValues.shortLinksLimitAdmin,
 
@@ -556,11 +570,13 @@ export default function AdminSettingsClient({
       type Payload = Omit<
         FormValues,
         | "sharingDomain"
+        | "sharingDomainFallbackUrl"
         | "allowedMimePrefixes"
         | "disallowedExtensions"
         | "preservedUsernames"
       > & {
         sharingDomain: string | null;
+        sharingDomainFallbackUrl: string | null;
         allowedMimePrefixes: string[] | null;
         disallowedExtensions: string[] | null;
         preservedUsernames: string[] | null;
@@ -568,6 +584,7 @@ export default function AdminSettingsClient({
 
       const {
         sharingDomain,
+        sharingDomainFallbackUrl,
         allowedMimePrefixes: amp,
         disallowedExtensions: dex,
         preservedUsernames: pun,
@@ -577,6 +594,9 @@ export default function AdminSettingsClient({
       const payload: Payload = {
         ...rest,
         sharingDomain: sharingDomain?.trim() ? sharingDomain.trim() : null,
+        sharingDomainFallbackUrl: sharingDomainFallbackUrl?.trim()
+          ? sharingDomainFallbackUrl.trim()
+          : null,
         allowedMimePrefixes: amp ? strArrParser(amp) : null,
         disallowedExtensions: dex ? strArrParser(dex) : null,
         preservedUsernames: pun ? strArrParser(pun) : null,
@@ -656,8 +676,22 @@ export default function AdminSettingsClient({
                     {...form.register("sharingDomain")}
                   />
                 </Field>
+                <Field
+                  label={
+                    <span className="inline-flex items-center">
+                      Fallback URL (sharing domain)
+                      <HelpTip text="When someone opens the sharing domain without a valid /x/slug path, they will be redirected here. Leave empty to send them to your main app home page." />
+                    </span>
+                  }
+                >
+                  <Input
+                    placeholder="https://domain.example"
+                    {...form.register("sharingDomainFallbackUrl")}
+                  />
+                </Field>
                 <p className="text-xs text-muted-foreground">
-                  Leave empty to use the default app domain.
+                  Leave fallback URL empty to send visitors to your main app
+                  home page.
                 </p>
               </Grid>
             </Card>
@@ -893,6 +927,26 @@ export default function AdminSettingsClient({
                 </div>
 
                 <div className="grid gap-3 rounded-md border p-3">
+                  <div className="text-sm font-medium">Notes</div>
+                  <Grid cols={2}>
+                    <Field label="User limit">
+                      <Input
+                        type="number"
+                        placeholder="1>"
+                        {...form.register("notesLimitUser")}
+                      />
+                    </Field>
+                    <Field label="Admin limit">
+                      <Input
+                        type="number"
+                        placeholder="1>"
+                        {...form.register("notesLimitAdmin")}
+                      />
+                    </Field>
+                  </Grid>
+                </div>
+
+                <div className="grid gap-3 rounded-md border p-3">
                   <div className="text-sm font-medium">Bookmarks</div>
                   <Grid cols={2}>
                     <Field label="User limit">
@@ -907,6 +961,46 @@ export default function AdminSettingsClient({
                         type="number"
                         placeholder="1>"
                         {...form.register("bookmarksLimitAdmin")}
+                      />
+                    </Field>
+                  </Grid>
+                </div>
+
+                <div className="grid gap-3 rounded-md border p-3">
+                  <div className="text-sm font-medium">Snippets</div>
+                  <Grid cols={2}>
+                    <Field label="User limit">
+                      <Input
+                        type="number"
+                        placeholder="1>"
+                        {...form.register("snippetsLimitUser")}
+                      />
+                    </Field>
+                    <Field label="Admin limit">
+                      <Input
+                        type="number"
+                        placeholder="1>"
+                        {...form.register("snippetsLimitAdmin")}
+                      />
+                    </Field>
+                  </Grid>
+                </div>
+
+                <div className="grid gap-3 rounded-md border p-3">
+                  <div className="text-sm font-medium">Recipes</div>
+                  <Grid cols={2}>
+                    <Field label="User limit">
+                      <Input
+                        type="number"
+                        placeholder="1>"
+                        {...form.register("recipesLimitUser")}
+                      />
+                    </Field>
+                    <Field label="Admin limit">
+                      <Input
+                        type="number"
+                        placeholder="1>"
+                        {...form.register("recipesLimitAdmin")}
                       />
                     </Field>
                   </Grid>

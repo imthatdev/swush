@@ -61,6 +61,14 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+function isEmailNotVerifiedError(message: string) {
+  const normalized = message.trim().toLowerCase();
+  return (
+    normalized.includes("email not verified") ||
+    normalized.includes("email is not verified")
+  );
+}
+
 export default function LoginClient() {
   const { appName, supportEmail, turnstileSiteKey } = useAppConfig();
   const router = useRouter();
@@ -109,8 +117,14 @@ export default function LoginClient() {
       description ||
       (normalizedError && errorMap[normalizedError]) ||
       "Authentication failed. Please try again.";
+    if (isEmailNotVerifiedError(message)) {
+      toast.error("Email not verified", {
+        description: `If you didn't receive a verification email, contact support at ${supportEmail} using the same email address.`,
+      });
+      return;
+    }
     toast.error(message);
-  }, [searchParams]);
+  }, [searchParams, supportEmail]);
   const [trustDevice, setTrustDevice] = useState(true);
   const [otpSent, setOtpSent] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
@@ -188,7 +202,14 @@ export default function LoginClient() {
             );
 
         if (error) {
-          toast.error(error.message || "Login failed.");
+          const message = error.message || "Login failed.";
+          if (isEmailNotVerifiedError(message)) {
+            toast.error("Email not verified", {
+              description: `If you didn't receive a verification email, contact support at ${supportEmail} using the same email address.`,
+            });
+            return;
+          }
+          toast.error(message);
           return;
         }
 
@@ -205,7 +226,7 @@ export default function LoginClient() {
         setLoading(false);
       }
     },
-    [router, loading, captchaToken, turnstileSiteKey],
+    [router, loading, captchaToken, turnstileSiteKey, supportEmail],
   );
 
   const sendOtp = async () => {
@@ -266,10 +287,19 @@ export default function LoginClient() {
 
   const signInWithPasskey = async () => {
     if (passkeyLoading || loading) return;
+    if (!passkeySupported) {
+      toast.error("Passkeys are not supported on this device/browser.");
+      return;
+    }
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      toast.error("Passkeys require HTTPS (or localhost in development).");
+      return;
+    }
+
     setPasskeyLoading(true);
     try {
       const { error } = await authClient.signIn.passkey({
-        autoFill: true,
+        autoFill: false,
       });
       if (error) {
         toast.error(error.message || "Passkey sign-in failed");
@@ -278,7 +308,9 @@ export default function LoginClient() {
       toast.success("Logged in with passkey");
       router.push("/vault");
     } catch (err) {
-      toast.error(`Network error. Please try again: ${err}`);
+      toast.error(
+        err instanceof Error ? err.message : "Passkey sign-in failed",
+      );
     } finally {
       setPasskeyLoading(false);
     }

@@ -29,6 +29,8 @@ import {
   isAnonymousRequest,
   stripOwnerDetails,
 } from "@/lib/server/anonymous-share";
+import { recordContentViewEvent } from "@/lib/server/content-view-analytics";
+import { recordItemAnalyticsHit } from "@/lib/server/item-analytics";
 
 type Params = Promise<{ slug: string }>;
 
@@ -95,6 +97,19 @@ export const POST = withApiError(async function POST(
   const safe = anonymous ? stripOwnerDetails(rest) : rest;
 
   await incrementBookmarkViews(safe.id);
+  await recordContentViewEvent({
+    ownerUserId: row.userId,
+    itemType: "bookmark",
+    itemId: row.id,
+    slug,
+    headers: req.headers,
+  });
+  await recordItemAnalyticsHit({
+    itemType: "bookmark",
+    itemId: row.id,
+    headers: req.headers,
+    context: "public_view",
+  });
 
   const res = NextResponse.json({ data: safe, tagColors: tagColors ?? {} });
   res.headers.set("RateLimit-Limit", String(Math.min(ipLimit, slugLimit)));

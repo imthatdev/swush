@@ -28,6 +28,7 @@ import {
   uniqueIndex,
   varchar,
   json,
+  jsonb,
   pgEnum,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -285,6 +286,7 @@ export const files = pgTable(
       .default(false)
       .notNull(),
     views: integer("views").default(0),
+    analytics: jsonb("analytics").notNull().default({}),
     maxViews: integer("max_views"),
     maxViewsAction: maxViewsAction("max_views_action"),
     maxViewsTriggeredAt: timestamp("max_views_triggered_at"),
@@ -453,6 +455,7 @@ export const serverSettings = pgTable("server_settings", {
 
   appName: text("app_name"),
   sharingDomain: text("sharing_domain"),
+  sharingDomainFallbackUrl: text("sharing_domain_fallback_url"),
   supportName: text("support_name"),
   supportEmail: text("support_email"),
 
@@ -512,6 +515,7 @@ export const shortLinks = pgTable(
     password: text("password"),
     maxClicks: integer("max_clicks"),
     clickCount: integer("click_count").default(0),
+    analytics: jsonb("analytics").notNull().default({}),
     maxViewsAction: maxViewsAction("max_views_action"),
     maxViewsTriggeredAt: timestamp("max_views_triggered_at"),
     tags: text("tags").array(),
@@ -594,6 +598,7 @@ export const bookmarks = pgTable(
       .default(false)
       .notNull(),
     views: integer("views").default(0),
+    analytics: jsonb("analytics").notNull().default({}),
     maxViews: integer("max_views"),
     maxViewsAction: maxViewsAction("max_views_action"),
     maxViewsTriggeredAt: timestamp("max_views_triggered_at"),

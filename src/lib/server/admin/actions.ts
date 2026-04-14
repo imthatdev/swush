@@ -33,7 +33,7 @@ import { sendBanLiftedNotification, sendBanNotification } from "@/lib/email";
 import { z } from "zod";
 import { getServerSettings, updateServerSettings } from "@/lib/settings";
 import { APIError } from "better-auth";
-import { normalizeSharingDomain } from "@/lib/api/helpers";
+import { normalizeSharingDomain, normalizeHttpUrl } from "@/lib/api/helpers";
 
 const LimitsSchema = z.object({
   maxStorageMb: z.number().int().min(0).nullable().optional(),
@@ -52,6 +52,28 @@ const LimitsSchema = z.object({
   lock: z.boolean().optional(),
   reason: z.string().max(500).optional(),
 });
+
+const ManualEmailVerificationSchema = z.object({
+  reason: z.string().trim().min(3).max(1000),
+  proof: z.string().trim().min(3).max(10000),
+});
+
+function firstValidationMessage(error: z.ZodError) {
+  const flattened = error.flatten();
+  for (const msg of flattened.formErrors) {
+    if (msg) return msg;
+  }
+  const fieldErrorMap = flattened.fieldErrors as Record<
+    string,
+    string[] | undefined
+  >;
+  for (const fieldErrors of Object.values(fieldErrorMap)) {
+    if (!fieldErrors) continue;
+    const first = fieldErrors[0];
+    if (first) return first;
+  }
+  return "Invalid input";
+}
 
 function normalizeNumeric(v: unknown): number | null | undefined {
   if (v === undefined) return undefined;
@@ -141,6 +163,7 @@ export async function adminGetUsersList() {
       banExpires: userInfo.banExpires,
       createdAt: user.createdAt,
       lastLoginAt: user.updatedAt,
+      emailVerified: user.emailVerified,
       maxStorageMb: userInfo.maxStorageMb,
       maxUploadMb: userInfo.maxUploadMb,
       filesLimit: userInfo.filesLimit,
@@ -208,6 +231,7 @@ export async function adminGetUsersList() {
 
       disableApiTokens: !!u.disableApiTokens,
       verified: !!u.verified,
+      emailVerified: !!u.emailVerified,
     };
   });
 }
@@ -224,6 +248,7 @@ export async function adminGetUser(id: string) {
       banReason: userInfo.banReason,
       banExpires: userInfo.banExpires,
       createdAt: user.createdAt,
+      emailVerified: user.emailVerified,
       maxStorageMb: userInfo.maxStorageMb,
       maxUploadMb: userInfo.maxUploadMb,
       filesLimit: userInfo.filesLimit,
@@ -280,6 +305,7 @@ export async function adminGetUser(id: string) {
     disableApiTokens: !!row.disableApiTokens,
     twoFactor: !!row.twoFactor,
     verified: !!row.verified,
+    emailVerified: !!row.emailVerified,
   };
 }
 
@@ -288,6 +314,50 @@ export async function adminUpdateUser(
   data: Record<string, unknown>,
   acting: { id: string; role: "owner" | "admin" | "user" },
 ) {
+  if (data && typeof data.manualEmailVerification === "object") {
+    if (acting.role !== "owner" && acting.role !== "admin") {
+      return { ok: false as const, error: "Forbidden" };
+    }
+
+    const parsedManual = ManualEmailVerificationSchema.safeParse(
+      data.manualEmailVerification,
+    );
+    if (!parsedManual.success) {
+      return {
+        ok: false as const,
+        error: firstValidationMessage(parsedManual.error),
+      };
+    }
+
+    const [targetUser] = await db
+      .select({ id: user.id, emailVerified: user.emailVerified })
+      .from(user)
+      .where(eq(user.id, id))
+      .limit(1);
+
+    if (!targetUser) {
+      return { ok: false as const, error: "User not found" };
+    }
+
+    if (targetUser.emailVerified) {
+      return {
+        ok: true as const,
+        manualEmailVerification: parsedManual.data,
+        alreadyVerified: true as const,
+      };
+    }
+
+    await db
+      .update(user)
+      .set({ emailVerified: true })
+      .where(eq(user.id, id));
+
+    return {
+      ok: true as const,
+      manualEmailVerification: parsedManual.data,
+    };
+  }
+
   if (data && data.disable2FA === true) {
     if (acting.role !== "owner" && acting.role !== "admin") {
       return { ok: false as const, error: "Forbidden" };
@@ -312,6 +382,7 @@ export async function adminUpdateUser(
   const originalRoleChange = data?.role;
 
   const coerce = (v: unknown, key?: string) => {
+    if (v === undefined) return undefined;
     if (
       (key === "allowRemoteUpload" ||
         key === "allowMeetings" ||
@@ -321,12 +392,11 @@ export async function adminUpdateUser(
         key === "allowShortlinks" ||
         key === "allowRecipes" ||
         key === "allowWatchlist" ||
-        key === "allowGamelists" ||
-        key === "disableApiTokens") &&
-      (v === "" || v === undefined)
+        key === "allowGamelists") &&
+      v === ""
     )
       return null;
-    if (v === "" || v === undefined) return null;
+    if (v === "") return null;
     if (v === null) return null;
     if (typeof v === "boolean") return v;
     if (typeof v === "string") {
@@ -367,7 +437,9 @@ export async function adminUpdateUser(
   };
 
   const parsed = LimitsSchema.safeParse(prepared);
-  if (!parsed.success) return { ok: false, error: parsed.error.flatten() };
+  if (!parsed.success) {
+    return { ok: false as const, error: firstValidationMessage(parsed.error) };
+  }
 
   if (originalRoleChange !== undefined && acting.role !== "owner") {
     return { ok: false as const, error: "Only owners can change roles." };
@@ -512,6 +584,9 @@ const StringArray = z
 
 const SettingsSchema = z.object({
   sharingDomain: z.union([z.string().trim().max(255), z.null()]).optional(),
+  sharingDomainFallbackUrl: z
+    .union([z.string().trim().max(2048), z.null()])
+    .optional(),
   maxUploadMb: z.number().int().min(1).max(102400),
   maxFilesPerUpload: z.number().int().min(1).max(1000),
   allowPublicRegistration: z.boolean(),
@@ -565,6 +640,8 @@ export async function adminGetSettings() {
   return {
     id: settings.id,
     sharingDomain: normalizeSharingDomain(settings.sharingDomain) || null,
+    sharingDomainFallbackUrl:
+      normalizeHttpUrl(settings.sharingDomainFallbackUrl) || null,
     allowPublicRegistration: settings.allowPublicRegistration,
     passwordPolicyMinLength: settings.passwordPolicyMinLength,
     maxUploadMb: settings.maxUploadMb,
@@ -609,11 +686,19 @@ export async function adminPutSettings(data: unknown) {
       ? undefined
       : normalizeSharingDomain(parsed.data.sharingDomain) || null;
 
+  const normalizedSharingDomainFallbackUrl =
+    parsed.data.sharingDomainFallbackUrl === undefined
+      ? undefined
+      : normalizeHttpUrl(parsed.data.sharingDomainFallbackUrl) || null;
+
   const update: Record<string, unknown> = {
     ...parsed.data,
     ...(normalizedSharingDomain === undefined
       ? {}
       : { sharingDomain: normalizedSharingDomain }),
+    ...(normalizedSharingDomainFallbackUrl === undefined
+      ? {}
+      : { sharingDomainFallbackUrl: normalizedSharingDomainFallbackUrl }),
     allowedMimePrefixes: normalize(parsed.data.allowedMimePrefixes),
     disallowedExtensions: normalize(parsed.data.disallowedExtensions),
     preservedUsernames: normalize(parsed.data.preservedUsernames),

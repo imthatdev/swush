@@ -42,6 +42,8 @@ RUN corepack enable && corepack prepare pnpm@latest --activate \
 COPY --chown=swush:swush --from=builder /app/.next/standalone ./
 COPY --chown=swush:swush --from=builder /app/.next/static ./.next/static
 COPY --chown=swush:swush --from=builder /app/public ./public
+COPY --chown=swush:swush --from=builder /app/drizzle.config.ts ./drizzle.config.ts
+COPY --chown=swush:swush --from=builder /app/src/db ./src/db
 
 # Copy entrypoint script
 COPY --chown=swush:swush docker/entrypoint.sh ./entrypoint.sh

@@ -47,9 +47,9 @@ export default async function DashboardLayout({
   return (
     <PlayerProvider>
       <SidebarWrapper>
-        <div className="flex-1 flex bg-secondary h-full min-h-0">
-          <div className="flex w-full flex-1 flex-col gap-2 rounded-tl-2xl bg-background p-2 md:p-6 min-h-0">
-            <div className="overflow-y-auto flex-1 rounded-lg min-h-0">
+        <div className="flex min-w-0 flex-1 bg-secondary h-full min-h-0">
+          <div className="flex w-full min-w-0 flex-1 flex-col gap-2 rounded-tl-2xl bg-background p-2 md:p-6 min-h-0">
+            <div className="overflow-y-auto flex flex-1 flex-col rounded-lg min-h-0 min-w-0">
               <SponsorBanner />
               {children}
             </div>

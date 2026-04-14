@@ -524,18 +524,14 @@ export default function ShortLinkAnalyticsDialog({
         </div>
 
         {loading ? (
-          <div className="grid gap-3 lg:grid-cols-2">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <Card key={`short-link-analytics-skeleton-${index}`}>
-                <CardHeader>
-                  <Skeleton className="h-5 w-36" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-72 w-full" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-36" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-72 w-full" />
+            </CardContent>
+          </Card>
         ) : data ? (
           <div className="min-w-0 space-y-3">
             <Tabs

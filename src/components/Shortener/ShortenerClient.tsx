@@ -1588,7 +1588,7 @@ function EditShortLinkDialog({
               >
                 Apply UTM
               </Button>
-              <span className="text-xs text-muted-foreground truncate">
+              <span className="text-xs text-muted-foreground break-all">
                 {originalUrl ? buildUtmUrl(originalUrl, utm) : ""}
               </span>
             </div>

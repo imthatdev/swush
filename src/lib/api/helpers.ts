@@ -143,6 +143,25 @@ function normalizeHttpOrigin(value?: string | null) {
   }
 }
 
+export function normalizeHttpUrl(value?: string | null) {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) return "";
+
+  const withProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+
+  try {
+    const parsed = new URL(withProtocol);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return "";
+    }
+    return parsed.toString();
+  } catch {
+    return "";
+  }
+}
+
 export function normalizeSharingDomain(value?: string | null) {
   return normalizeHttpOrigin(value);
 }

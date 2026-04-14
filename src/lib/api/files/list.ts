@@ -92,8 +92,8 @@ export type FileListResult = {
   total: number;
 };
 
-const MIN_PAGE_SIZE = 32;
-const DEFAULT_PAGE_SIZE = 32;
+const MIN_PAGE_SIZE = 6;
+const DEFAULT_PAGE_SIZE = 12;
 const MAX_PAGE_SIZE = 200;
 const LIST_CACHE_TTL_MS = 8_000;
 const WARM_LIMIT = 24;

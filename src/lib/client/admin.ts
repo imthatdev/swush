@@ -42,6 +42,7 @@ export type AdminListUsersResult = {
 
 export type AdminSettingsPayload = {
   sharingDomain: string | null;
+  sharingDomainFallbackUrl: string | null;
   maxUploadMb: number;
   maxFilesPerUpload: number;
   allowPublicRegistration: boolean;
@@ -160,6 +161,23 @@ export async function adminSetVerified({
   verified: boolean;
 }) {
   return adminPatchUser(userId, { verified });
+}
+
+export async function adminManualVerifyEmail({
+  userId,
+  reason,
+  proof,
+}: {
+  userId: string;
+  reason: string;
+  proof: string;
+}) {
+  return adminPatchUser(userId, {
+    manualEmailVerification: {
+      reason,
+      proof,
+    },
+  });
 }
 
 export async function adminBanUser({

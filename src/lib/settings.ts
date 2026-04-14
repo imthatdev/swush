@@ -22,7 +22,7 @@ import { db } from "@/db/client";
 import { DBServerSettings } from "@/types/schema";
 import { getCached, setCached, clearCached } from "@/lib/server/ttl-cache";
 import { redisDelete, redisGetJson, redisSetJson } from "@/lib/server/redis";
-import { normalizeSharingDomain } from "@/lib/api/helpers";
+import { normalizeHttpUrl, normalizeSharingDomain } from "@/lib/api/helpers";
 
 export type ServerSettings = DBServerSettings;
 
@@ -70,10 +70,17 @@ function buildPayload(input: Partial<ServerSettings>) {
     input,
     "sharingDomain",
   );
+  const hasSharingDomainFallbackUrl = Object.prototype.hasOwnProperty.call(
+    input,
+    "sharingDomainFallbackUrl",
+  );
 
   const payload: Partial<typeof serverSettings.$inferInsert> = {
     sharingDomain: hasSharingDomain
       ? normalizeSharingDomain(input.sharingDomain) || null
+      : undefined,
+    sharingDomainFallbackUrl: hasSharingDomainFallbackUrl
+      ? normalizeHttpUrl(input.sharingDomainFallbackUrl) || null
       : undefined,
     maxUploadMb: input.maxUploadMb,
     maxFilesPerUpload: input.maxFilesPerUpload,

@@ -47,6 +47,7 @@ import {
   resolveEmbedViewport,
 } from "@/lib/server/embed-settings";
 import { recordShortLinkVisit } from "@/lib/server/shortlink-analytics";
+import { recordItemAnalyticsHit } from "@/lib/server/item-analytics";
 
 export const dynamic = "force-dynamic";
 
@@ -277,6 +278,12 @@ export default async function ShortLinkPage({
       slug: trackedLink.slug,
       destinationUrl: trackedLink.originalUrl,
       headers: reqHeaders,
+    });
+    await recordItemAnalyticsHit({
+      itemType: "short_link",
+      itemId: trackedLink.id,
+      headers: reqHeaders,
+      context: "short_redirect",
     });
   }
 

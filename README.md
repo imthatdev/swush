@@ -12,6 +12,8 @@ Swush is a secure, self-hosted full‑stack file manager and personal dashboard 
 ![Docker Image Size](https://img.shields.io/docker/image-size/iconical/swush)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/22c34789c3484808ba2cbea469605c90)](https://app.codacy.com/gh/imthatdev/swush/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 ![GitHub License](https://img.shields.io/github/license/imthatdev/swush)
+[![Install Extension](https://img.shields.io/badge/Install-Chrome_Extension-blue?style=for-the-badge&logo=googlechrome)](https://chromewebstore.google.com/detail/swush-companion/jgipkeccibhgdfhoknfggljdmdodkjop)
+[![Install Extension](https://img.shields.io/badge/Install-Firefox_Extension-orange?style=for-the-badge&logo=firefox)](https://addons.mozilla.org/en-US/firefox/addon/swush-companion/)
 
 ## ✨ Features
 

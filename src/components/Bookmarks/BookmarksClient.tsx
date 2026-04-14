@@ -31,6 +31,7 @@ import {
   IconPin,
   IconPinFilled,
   IconFilterSpark,
+  IconChartBar,
   IconDownload,
   IconUpload,
   IconArchive,
@@ -104,6 +105,7 @@ import TagInputWithSuggestions from "@/components/Common/TagInputWithSuggestions
 import { getBadgeColorStyles } from "@/lib/tag-colors";
 import { formatTagName, normalizeTagName } from "@/lib/tag-names";
 import BookmarkTagsDialog from "@/components/Bookmarks/BookmarkTagsDialog";
+import ItemAnalyticsDialog from "@/components/Common/ItemAnalyticsDialog";
 import { Separator } from "../ui/separator";
 import { HelpTip } from "../Admin/Docs/HelpTip";
 
@@ -1468,6 +1470,7 @@ function BookmarkCard({
   const [visibilityLoading, setVisibilityLoading] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const isMasonryView = viewMode === "masonry";
   const isRowsView = viewMode === "rows";
   const isMinimalView = viewMode === "minimal";
@@ -1603,6 +1606,14 @@ function BookmarkCard({
             availableTags={availableTags}
           />
           <ArchiveBookmarkDialog row={row} />
+          <Button
+            variant="ghost"
+            className="w-full justify-start"
+            onClick={() => setAnalyticsOpen(true)}
+          >
+            <IconChartBar className="h-4 w-4 text-indigo-500" />
+            <span>View Analytics</span>
+          </Button>
           {row.isPublic && (
             <CopyButton
               variant="ghost"
@@ -1838,6 +1849,14 @@ function BookmarkCard({
           </div>
         </div>
       </CardContent>
+
+      <ItemAnalyticsDialog
+        open={analyticsOpen}
+        onOpenChange={setAnalyticsOpen}
+        itemType="bookmark"
+        itemId={row.id}
+        itemTitle={row.title || "Bookmark"}
+      />
     </Card>
   );
 }

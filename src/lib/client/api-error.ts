@@ -56,7 +56,7 @@ export function getApiErrorMessage(data: unknown, fallback: string) {
   const value = data as {
     error?: SwushErrorPayload | string;
     errorInfo?: SwushErrorPayload;
-    message?: string;
+    message?: unknown;
   };
   if (value.errorInfo?.message) return value.errorInfo.message;
   if (typeof value.error === "object" && value.error?.message) {
@@ -65,6 +65,24 @@ export function getApiErrorMessage(data: unknown, fallback: string) {
   if (typeof value.error === "string" && value.error.trim()) return value.error;
   if (typeof value.message === "string" && value.message.trim())
     return value.message;
+  if (value.message && typeof value.message === "object") {
+    const asRecord = value.message as {
+      formErrors?: string[];
+      fieldErrors?: Record<string, string[] | undefined>;
+      message?: string;
+    };
+    if (typeof asRecord.message === "string" && asRecord.message.trim()) {
+      return asRecord.message;
+    }
+    const firstFormError = asRecord.formErrors?.find(Boolean);
+    if (firstFormError) return firstFormError;
+    if (asRecord.fieldErrors && typeof asRecord.fieldErrors === "object") {
+      for (const errs of Object.values(asRecord.fieldErrors)) {
+        const firstFieldError = errs?.find(Boolean);
+        if (firstFieldError) return firstFieldError;
+      }
+    }
+  }
   return fallback;
 }
 

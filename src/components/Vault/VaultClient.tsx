@@ -105,7 +105,7 @@ interface DashboardWrapperProps {
   initialPageSize: number;
 }
 
-const PAGE_SIZE_OPTIONS = [32, 48, 64, 96] as const;
+const PAGE_SIZE_OPTIONS = [6, 12, 24, 48, 96] as const;
 const CARD_VISIBILITY_STYLE = {
   contentVisibility: "auto",
   containIntrinsicSize: "320px 420px",
@@ -1172,7 +1172,7 @@ export default function VaultClient({
 
   return (
     <PageLayout
-      className="vault-scroll-root h-full min-h-0 overflow-y-auto overscroll-contain"
+      className="h-full min-h-0 overflow-y-auto overscroll-contain"
       title={`Welcome back, ${user?.name ? user.name : user.username} 👋`}
       subtitle="Here’s your stash."
       headerActions={

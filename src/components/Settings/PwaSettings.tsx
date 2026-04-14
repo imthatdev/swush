@@ -24,6 +24,15 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useAppConfig } from "@/components/Providers/AppConfigProvider";
 import { apiV1 } from "@/lib/api-path";
+import { IconBrandChrome, IconBrandFirefox } from "@tabler/icons-react";
+import {
+  Card,
+  CardContent,
+  CardTitle,
+  CardDescription,
+  CardHeader,
+} from "../ui/card";
+import Link from "next/link";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -40,6 +49,10 @@ type PushSubscriptionRecord = {
 
 const STALE_PUSH_DAYS = 30;
 const STALE_PUSH_MS = STALE_PUSH_DAYS * 24 * 60 * 60 * 1000;
+const FIREFOX_EXTENSION_URL =
+  "https://addons.mozilla.org/en-US/firefox/addon/swush-companion/";
+const CHROME_EXTENSION_URL =
+  "https://chromewebstore.google.com/detail/swush-companion/jgipkeccibhgdfhoknfggljdmdodkjop";
 
 function formatRelativeTime(iso: string) {
   const value = new Date(iso).getTime();
@@ -485,14 +498,22 @@ export default function PwaSettings() {
   };
 
   return (
-    <section>
+    <section className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <Badge variant="secondary">Mode: {displayMode}</Badge>
-        <Badge variant="secondary">
+        <Badge variant={permission === "unsupported" ? "secondary" : "default"}>
           Notifications:{" "}
           {permission === "unsupported" ? "unsupported" : permission}
         </Badge>
-        <Badge variant="secondary">
+        <Badge
+          variant={
+            pushSupported
+              ? "secondary"
+              : pushSubscription
+                ? "default"
+                : "destructive"
+          }
+        >
           Push:{" "}
           {pushSupported
             ? pushSubscription
@@ -504,91 +525,156 @@ export default function PwaSettings() {
         {!hasPublicKey && (
           <Badge variant="destructive">Missing VAPID public key</Badge>
         )}
+        {swStatus === "error" && swError && (
+          <Badge variant="destructive">Service worker error: {swError}</Badge>
+        )}
       </div>
-      {swStatus === "error" && swError && (
-        <p className="text-xs text-destructive mb-2">
-          Service worker error: {swError}
-        </p>
-      )}
 
-      <div className="flex flex-col sm:flex-row gap-2">
-        <Button size="sm" onClick={install} disabled={installed}>
-          {installed
-            ? "Installed"
-            : isIosSafari || isMacSafari
-              ? "How to install"
-              : "Install app"}
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={requestNotifications}
-          disabled={permission === "unsupported" || permission === "granted"}
-        >
-          Enable notifications
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={testNotification}
-          disabled={permission !== "granted"}
-        >
-          Send test notification
-        </Button>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="space-y-1">
+            <CardTitle>Progressive Web App</CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">
+              Install Swush as an app and enable notifications for quicker
+              access.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-2">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button size="sm" onClick={install} disabled={installed}>
+                {installed
+                  ? "Installed"
+                  : isIosSafari || isMacSafari
+                    ? "How to install"
+                    : "Install app"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={requestNotifications}
+                disabled={
+                  permission === "unsupported" || permission === "granted"
+                }
+              >
+                Allow notifications
+              </Button>
+              {permission === "unsupported" ||
+                (permission === "granted" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={testNotification}
+                    disabled={permission !== "granted"}
+                  >
+                    Send test notification
+                  </Button>
+                ))}
+            </div>
+
+            {(isIosSafari || isMacSafari) && !installed && !deferredPrompt && (
+              <p className="text-xs text-muted-foreground">
+                {isIosSafari
+                  ? "iPhone/iPad Safari does not expose an in-app install prompt. Tap Share, then Add to Home Screen."
+                  : "Safari on macOS installs this app through the menu bar. Choose File, then Add to Dock."}
+              </p>
+            )}
+
+            {pushSupported && (
+              <div>
+                {pushSubscription ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={unsubscribeFromPush}
+                      disabled={pushBusy}
+                    >
+                      Disable push notifications
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={sendPushTest}
+                      disabled={pushBusy}
+                    >
+                      Send push test
+                    </Button>
+                    <Input
+                      placeholder="Test message"
+                      value={pushMessage}
+                      onChange={(e) => setPushMessage(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Sound URL (optional)"
+                      value={pushSound}
+                      onChange={(e) => setPushSound(e.target.value)}
+                    />
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={subscribeToPush}
+                    disabled={pushBusy}
+                  >
+                    Enable push notifications
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="space-y-1">
+            <CardTitle>Browser Extensions</CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">
+              Install Swush Companion for quick uploads and browser integration.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" asChild>
+                <Link
+                  href={CHROME_EXTENSION_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <IconBrandChrome size={16} />
+                  Chrome Extension
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link
+                  href={FIREFOX_EXTENSION_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <IconBrandFirefox size={16} />
+                  Firefox Add-on
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-      {(isIosSafari || isMacSafari) && !installed && !deferredPrompt && (
-        <p className="text-xs text-muted-foreground mt-2">
-          {isIosSafari
-            ? "iPhone/iPad Safari does not expose an in-app install prompt. Tap Share, then Add to Home Screen."
-            : "Safari on macOS installs this app through the menu bar. Choose File, then Add to Dock."}
-        </p>
-      )}
 
       {pushSupported && (
-        <div className="mt-4 space-y-2">
-          {pushSubscription ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={unsubscribeFromPush}
-                disabled={pushBusy}
-              >
-                Disable push
-              </Button>
-              <Input
-                placeholder="Test message"
-                value={pushMessage}
-                onChange={(e) => setPushMessage(e.target.value)}
-              />
-              <Input
-                placeholder="Sound URL (optional)"
-                value={pushSound}
-                onChange={(e) => setPushSound(e.target.value)}
-              />
-              <Button size="sm" onClick={sendPushTest} disabled={pushBusy}>
-                Send push test
-              </Button>
-            </div>
-          ) : (
-            <Button size="sm" onClick={subscribeToPush} disabled={pushBusy}>
-              Enable push notifications
+        <Card>
+          <CardHeader>
+            <CardTitle>Registered devices</CardTitle>
+            <CardDescription>
+              Devices that are registered to receive push notifications.
+            </CardDescription>
+            <Button
+              variant="outline"
+              onClick={() => void loadPushDevices()}
+              disabled={pushDevicesLoading}
+            >
+              {pushDevicesLoading ? "Refreshing..." : "Refresh devices"}
             </Button>
-          )}
+          </CardHeader>
 
-          <div className="rounded-md border p-3 space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium">Registered devices</p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => void loadPushDevices()}
-                disabled={pushDevicesLoading}
-              >
-                {pushDevicesLoading ? "Refreshing..." : "Refresh devices"}
-              </Button>
-            </div>
-
+          <CardContent>
             {pushDevicesLoading ? (
               <p className="text-xs text-muted-foreground">
                 Loading devices...
@@ -598,7 +684,7 @@ export default function PwaSettings() {
                 No push devices registered yet.
               </p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {pushDevices.map((device) => {
                   const lastSeenMs = new Date(device.updatedAt).getTime();
                   const stale =
@@ -619,7 +705,7 @@ export default function PwaSettings() {
                               {device.endpointHost || "Push endpoint"}
                             </span>
                             {isCurrent ? (
-                              <Badge variant="secondary">This device</Badge>
+                              <Badge variant="default">This device</Badge>
                             ) : null}
                             {stale ? (
                               <Badge variant="outline">
@@ -627,7 +713,7 @@ export default function PwaSettings() {
                               </Badge>
                             ) : null}
                           </div>
-                          <p className="text-xs text-muted-foreground break-all">
+                          <p className="text-xs text-muted-foreground break-all line-clamp-1">
                             {device.endpoint}
                           </p>
                           <p className="text-xs text-muted-foreground">
@@ -652,14 +738,9 @@ export default function PwaSettings() {
                 })}
               </div>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
-
-      <p className="text-xs text-muted-foreground mt-3">
-        Install prompt only appears on supported browsers after visiting the
-        site a bit (and only on HTTPS or localhost).
-      </p>
     </section>
   );
 }
