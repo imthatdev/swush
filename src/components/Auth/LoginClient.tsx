@@ -299,7 +299,7 @@ export default function LoginClient() {
     setPasskeyLoading(true);
     try {
       const { error } = await authClient.signIn.passkey({
-        autoFill: false,
+        autoFill: true,
       });
       if (error) {
         toast.error(error.message || "Passkey sign-in failed");
@@ -434,7 +434,7 @@ export default function LoginClient() {
                 type="button"
                 variant="outline"
                 onClick={signInWithPasskey}
-                disabled={!passkeySupported || loading || passkeyLoading}
+                disabled={loading || passkeyLoading}
                 aria-busy={passkeyLoading}
               >
                 {passkeyLoading ? "Signing in..." : "Sign in with Passkey"}

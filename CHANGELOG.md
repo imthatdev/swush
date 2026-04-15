@@ -11,6 +11,32 @@ This project follows [Semantic Versioning](https://iconical.dev/versioning).
 
 ---
 
+## v1.3.2 – Auth Autofill & UX Fix 🔐
+
+Released: April 15, 2026
+
+### 🔑 Authentication
+- Enabled autofill support for passkey sign-in.
+- Adjusted button disable logic for smoother interaction.
+
+---
+
+## v1.3.1 – UI Refinement & Loading Experience Polish ✨
+
+Released: April 15, 2026
+
+### 🎨 Interface & Layout
+- Refined layout styles for a cleaner and more consistent UI.
+- Improved spacing and visual balance across components.
+
+### ⏳ Loading Experience
+- Added animated loading GIF for smoother and more engaging feedback during load states.
+
+### 📦 Versioning
+- Updated application version to 1.3.1
+
+---
+
 ## v1.3.0 – Sharing Domain Guard, Analytics & Platform Polish 🩹
 
 **Released: April 14, 2026**
