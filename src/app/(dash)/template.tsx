@@ -21,7 +21,7 @@ export default function Transition({
   children: React.ReactNode;
 }) {
   return (
-    <div className="animate-fade-in flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="animate-fade-in flex min-h-0 flex-1 flex-col overflow-x-hidden">
       {children}
     </div>
   );

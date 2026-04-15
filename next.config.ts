@@ -27,6 +27,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [{ protocol: "https", hostname: "**" }],
     localPatterns: [{ pathname: "/**" }],
   },
+  serverExternalPackages: ["file-type"],
   async headers() {
     return [
       {

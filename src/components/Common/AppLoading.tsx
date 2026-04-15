@@ -18,11 +18,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LogoIcon } from "@/components/Common/Logo";
 import { cn } from "@/lib/utils";
 
 export default function AppLoading({
-  label = "Loading…",
   className,
   showDelayMs = 120,
 }: {
@@ -54,20 +52,17 @@ export default function AppLoading({
         className,
       )}
     >
-      <div className="w-[320px] sm:w-90 rounded-2xl border bg-card/90 p-6 shadow-lg">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="absolute inset-0 rounded-2xl bg-primary/10 blur-xl" />
-            <LogoIcon size={48} />
-          </div>
-          <span className="text-sm text-muted-foreground">{label}</span>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div className="loading-bar h-full w-2/5 rounded-full bg-primary" />
-          </div>
-          <span className="text-xs text-muted-foreground">
-            Waking up the code goblins...
-          </span>
-        </div>
+      <div className="absolute inset-x-0 top-0 h-1 overflow-hidden bg-muted/70">
+        <div className="loading-bar h-full w-2/5 bg-primary" />
+      </div>
+      <div className="relative">
+        <div className="absolute inset-0 rounded-full bg-primary/10 blur-xl" />
+        <img
+          src="/images/cute-chick-running.gif"
+          alt="Cute chick running in a circle"
+          className="relative h-32 w-32 object-contain"
+          draggable={false}
+        />
       </div>
     </div>
   );
