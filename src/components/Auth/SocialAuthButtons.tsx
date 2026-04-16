@@ -61,16 +61,23 @@ export default function SocialAuthButtons({
   return {
     hasProviders: true,
     content: (
-      <div className="grid grid-flow-col gap-2">
-        {socialLoginProviders.map((provider) => (
+      <div className="grid grid-cols-2 gap-2">
+        {socialLoginProviders.map((provider, index) => (
           <Button
             key={provider}
             variant={variant}
             type="button"
             onClick={() => void signIn(provider)}
-            className="justify-center gap-2"
+            className={`justify-center gap-2 ${
+              index === 0 ? "col-span-2" : "col-span-1"
+            }`}
           >
             {providerMeta[provider].icon}
+            <span>
+              {index === 0
+                ? `Continue with ${providerMeta[provider].label}`
+                : `${providerMeta[provider].label}`}
+            </span>
           </Button>
         ))}
       </div>

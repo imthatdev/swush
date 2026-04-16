@@ -158,6 +158,7 @@ export default function FileCard({
     <Card
       className={cn(
         "group relative transition-all gap-3 animate-fade-in-up h-full",
+        enableCardSelection && "select-none",
         selected &&
           "ring-2 ring-primary border-primary/70 bg-accent/30 shadow-sm",
       )}
@@ -169,6 +170,12 @@ export default function FileCard({
             }
           : undefined
       }
+      onContextMenu={(e) => {
+        if (!e.shiftKey || !onToggle) return;
+        e.preventDefault();
+        e.stopPropagation();
+        onToggle(e);
+      }}
     >
       {approval ? (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/70 backdrop-blur-sm pointer-events-none">
@@ -359,8 +366,10 @@ export default function FileCard({
         })()}
         <div
           className={cn(
-            "absolute left-2 top-2 z-10 transition-opacity duration-300",
-            selected ? "opacity-100" : "md:opacity-0 group-hover:opacity-100",
+            "absolute bottom-2 right-2 z-10 transition-opacity duration-300",
+            selected || enableCardSelection
+              ? "opacity-100"
+              : "opacity-0 group-hover:opacity-100",
           )}
         >
           <Checkbox

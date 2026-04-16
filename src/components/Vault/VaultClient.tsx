@@ -143,7 +143,6 @@ export default function VaultClient({
   const initialVisibility = searchParams.get("visibility");
   const initialSort = searchParams.get("sort");
   const initialGallery = searchParams.get("gallery");
-  const scrollDebugEnabled = searchParams.get("scrollDebug") === "1";
   const didInitFromUrl = useRef(false);
   const didSyncFolderFromPlayer = useRef(false);
   const didFetchFromFilters = useRef(false);
@@ -892,9 +891,7 @@ export default function VaultClient({
     if (pageSize) sp.set("pageSize", String(pageSize));
     if (page > 1) sp.set("page", String(page));
     if (focusIdParam) sp.set("focusId", focusIdParam);
-    router.replace(`/vault${sp.toString() ? `?${sp.toString()}` : ""}`, {
-      scroll: false,
-    });
+    router.replace(`/vault${sp.toString() ? `?${sp.toString()}` : ""}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     debouncedQuery,
@@ -912,6 +909,9 @@ export default function VaultClient({
   ]);
 
   const [deleting, setDeleting] = useState(false);
+  const [bulkAction, setBulkAction] = useState<
+    "makePublic" | "makePrivate" | "favorite" | "unfavorite" | null
+  >(null);
   const bulkDelete = async () => {
     if (selectedIds.length === 0) return;
     const toDelete = [...selectedIds];
@@ -959,9 +959,13 @@ export default function VaultClient({
     }
   };
 
-  const bulkSetVisibility = async (nextPublic: boolean) => {
-    if (selectedIds.length === 0) return;
+  const bulkSetVisibility = async (
+    nextPublic: boolean,
+    action: "makePublic" | "makePrivate",
+  ) => {
+    if (selectedIds.length === 0 || deleting || bulkAction) return;
     const targets = [...selectedIds];
+    setBulkAction(action);
 
     try {
       await runBulkFilePatch(
@@ -975,8 +979,35 @@ export default function VaultClient({
     } finally {
       clearSelection();
       await handleRefresh();
+      setBulkAction(null);
     }
   };
+
+  const bulkSetFavorite = async (
+    nextFavorite: boolean,
+    action: "favorite" | "unfavorite",
+  ) => {
+    if (selectedIds.length === 0 || deleting || bulkAction) return;
+    const targets = [...selectedIds];
+    setBulkAction(action);
+
+    try {
+      await runBulkFilePatch(
+        targets,
+        { isFavorite: nextFavorite },
+        (ok) =>
+          `${nextFavorite ? "Favorited" : "Unfavorited"} ${ok} file${
+            ok === 1 ? "" : "s"
+          }.`,
+      );
+    } finally {
+      clearSelection();
+      await handleRefresh();
+      setBulkAction(null);
+    }
+  };
+
+  const bulkActionsDisabled = deleting || bulkAction !== null;
 
   const bulkApplyTagsFolder = async (payload: {
     folderId?: string | null;
@@ -1080,95 +1111,6 @@ export default function VaultClient({
     setLoadFolderIntoPlayer(loadFolderIntoPlayer);
     return () => setLoadFolderIntoPlayer(null);
   }, [loadFolderIntoPlayer, setLoadFolderIntoPlayer]);
-
-  useEffect(() => {
-    if (!scrollDebugEnabled) return;
-
-    const getLabel = (el: HTMLElement | null) => {
-      if (!el) return "null";
-      const id = el.id ? `#${el.id}` : "";
-      const cls = el.className
-        ? `.${String(el.className).trim().replace(/\s+/g, ".")}`
-        : "";
-      return `${el.tagName.toLowerCase()}${id}${cls}`;
-    };
-
-    const isScrollable = (el: HTMLElement | null) => {
-      if (!el) return false;
-      const style = window.getComputedStyle(el);
-      const overflowY = style.overflowY;
-      const canOverflow = overflowY === "auto" || overflowY === "scroll";
-      return canOverflow && el.scrollHeight > el.clientHeight;
-    };
-
-    const dumpAncestors = (from: HTMLElement | null, title: string) => {
-      const rows: Array<{
-        node: string;
-        overflowY: string;
-        scrollTop: number;
-        scrollHeight: number;
-        clientHeight: number;
-        scrollable: boolean;
-      }> = [];
-      let curr: HTMLElement | null = from;
-      while (curr) {
-        const style = window.getComputedStyle(curr);
-        rows.push({
-          node: getLabel(curr),
-          overflowY: style.overflowY,
-          scrollTop: curr.scrollTop,
-          scrollHeight: curr.scrollHeight,
-          clientHeight: curr.clientHeight,
-          scrollable: isScrollable(curr),
-        });
-        curr = curr.parentElement;
-      }
-      // eslint-disable-next-line no-console
-      console.table({ title, rows });
-    };
-
-    const root = document.querySelector(
-      ".vault-scroll-root",
-    ) as HTMLElement | null;
-    dumpAncestors(root, "vault-root-ancestors");
-
-    const onScrollCapture = (event: Event) => {
-      const el = event.target as HTMLElement | null;
-      if (!el) return;
-      if (!isScrollable(el)) return;
-      // eslint-disable-next-line no-console
-      console.log("[vault-scroll-debug] scroll", {
-        node: getLabel(el),
-        scrollTop: el.scrollTop,
-        clientHeight: el.clientHeight,
-        scrollHeight: el.scrollHeight,
-      });
-    };
-
-    const onWheelCapture = (event: WheelEvent) => {
-      const path = event
-        .composedPath()
-        .filter((x): x is HTMLElement => x instanceof HTMLElement);
-      const firstScrollable = path.find((el) => isScrollable(el)) ?? null;
-      // eslint-disable-next-line no-console
-      console.log("[vault-scroll-debug] wheel", {
-        deltaY: event.deltaY,
-        target: getLabel(event.target as HTMLElement | null),
-        firstScrollable: getLabel(firstScrollable),
-      });
-    };
-
-    window.addEventListener("scroll", onScrollCapture, true);
-    window.addEventListener("wheel", onWheelCapture, {
-      capture: true,
-      passive: true,
-    });
-
-    return () => {
-      window.removeEventListener("scroll", onScrollCapture, true);
-      window.removeEventListener("wheel", onWheelCapture, true);
-    };
-  }, [scrollDebugEnabled, pageSize]);
 
   return (
     <PageLayout
@@ -1507,42 +1449,110 @@ export default function VaultClient({
         <Button
           variant="outline"
           onClick={() => toggleAllOnPage()}
-          disabled={visibleItems.length === 0}
+          disabled={visibleItems.length === 0 || bulkActionsDisabled}
           size="sm"
         >
           Select Page ({visibleItems.length})
         </Button>
-        <Button variant="outline" size="sm" onClick={clearSelection}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearSelection}
+          disabled={bulkActionsDisabled}
+        >
           Clear
         </Button>
         <Button
           variant="outline"
           size="sm"
           onClick={() => setBulkEditOpen(true)}
+          disabled={bulkActionsDisabled}
         >
           Edit
         </Button>
         <Button
           variant="outline"
           size="sm"
-          onClick={() => bulkSetVisibility(true)}
+          onClick={() => bulkSetVisibility(true, "makePublic")}
+          disabled={bulkActionsDisabled}
           className="gap-2"
         >
-          <IconEye className="h-4 w-4" />
-          Make Public
+          {bulkAction === "makePublic" ? (
+            <>
+              <Spinner />
+              Making Public...
+            </>
+          ) : (
+            <>
+              <IconEye className="h-4 w-4" />
+              Make Public
+            </>
+          )}
         </Button>
         <Button
           variant="outline"
           size="sm"
-          onClick={() => bulkSetVisibility(false)}
+          onClick={() => bulkSetVisibility(false, "makePrivate")}
+          disabled={bulkActionsDisabled}
           className="gap-2"
         >
-          <IconEyeOff className="h-4 w-4" />
-          Make Private
+          {bulkAction === "makePrivate" ? (
+            <>
+              <Spinner />
+              Making Private...
+            </>
+          ) : (
+            <>
+              <IconEyeOff className="h-4 w-4" />
+              Make Private
+            </>
+          )}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => bulkSetFavorite(true, "favorite")}
+          disabled={bulkActionsDisabled}
+          className="gap-2"
+        >
+          {bulkAction === "favorite" ? (
+            <>
+              <Spinner />
+              Favoriting...
+            </>
+          ) : (
+            <>
+              <IconStarFilled className="h-4 w-4 text-yellow-500" />
+              Favorite
+            </>
+          )}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => bulkSetFavorite(false, "unfavorite")}
+          disabled={bulkActionsDisabled}
+          className="gap-2"
+        >
+          {bulkAction === "unfavorite" ? (
+            <>
+              <Spinner />
+              Unfavoriting...
+            </>
+          ) : (
+            <>
+              <IconStar className="h-4 w-4" />
+              Unfavorite
+            </>
+          )}
         </Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm" disabled={deleting}>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={bulkActionsDisabled}
+            >
               {deleting ? (
                 <span className="flex items-center gap-2">
                   <Spinner />
@@ -1561,8 +1571,13 @@ export default function VaultClient({
               </AlertDialogTitle>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={bulkDelete} disabled={deleting}>
+              <AlertDialogCancel disabled={bulkActionsDisabled}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={bulkDelete}
+                disabled={bulkActionsDisabled}
+              >
                 {deleting ? "Deleting..." : "Delete"}
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -1586,8 +1601,13 @@ export default function VaultClient({
       )}
 
       {galleryView ? (
-        <div className="columns-2 sm:columns-3 lg:columns-4 gap-3 [column-fill:balance] max-w-[90vw]">
-          {visibleItems.map((file) => {
+        <div
+          className={cn(
+            "columns-2 sm:columns-3 lg:columns-4 gap-3 [column-fill:balance] max-w-[90vw]",
+            selectedCount > 0 && "select-none",
+          )}
+        >
+          {visibleItems.map((file, idx) => {
             const rawSrc = `/x/${encodeURIComponent(file.slug)}`;
             const previewSrc = `${rawSrc}.png`;
             return (
@@ -1606,9 +1626,16 @@ export default function VaultClient({
                     router.push(`/v/${file.slug}`);
                   }
                 }}
+                onContextMenu={(e) => {
+                  if (!e.shiftKey) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleCardToggle(file.id, idx, e);
+                }}
                 style={CARD_VISIBILITY_STYLE}
                 className={cn(
                   "mb-4 break-inside-avoid overflow-hidden rounded-md cursor-pointer relative",
+                  selectedCount > 0 && "select-none",
                   flashId === file.id &&
                     "ring-2 ring-primary shadow-[0_0_0_4px_var(--primary-a9)]",
                 )}
@@ -1726,7 +1753,12 @@ export default function VaultClient({
           })}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+        <div
+          className={cn(
+            "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4",
+            selectedCount > 0 && "select-none",
+          )}
+        >
           {visibleItems.map((file, idx) => (
             <div
               key={file.id}

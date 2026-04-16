@@ -11,6 +11,43 @@ This project follows [Semantic Versioning](https://iconical.dev/versioning).
 
 ---
 
+## v1.3.3 – Auth Experience & UI Polish ✨
+
+Released: April 15, 2026
+
+### 🔐 Auth Flow & Reliability
+- Rebuilt login/register pages with a new design and floating ecosystem icon background.
+- Added safe `?next=` redirect handling for password login, passkey login, 2FA completion, and social OAuth callback flows.
+- Added auth back-button behavior to route directly to `/` from auth screens.
+- Added Swush logo to auth card header and a theme button to auth corner controls.
+- Switched auth hero media to `/auth-bg.mp4` and updated hero copy to Swush-specific messaging.
+
+### 🌌 External Layout & Shared Visuals
+- Added floating icon background visuals to external pages.
+
+### ⚙️ Settings & Support UX
+- Replaced the icons `Monkey` password toggles with `Eye` in account settings flows.
+- Refreshed Sponsor banner design.
+
+### ✅ Bulk Selection & Action Feedback
+- Added in-progress/loading states for bulk actions across Bookmarks, Vault, Shortener, and Watchlist.
+- Disabled conflicting bulk actions while operations are running to avoid double-submit/race behavior.
+- Added `Shift + right-click` item selection support in bulk-select surfaces for faster range selection workflows.
+- Prevented accidental text highlighting during bulk selection by applying `select-none` behavior in selection mode.
+- Added themed global text-selection styling (`::selection`) to match active app color tokens.
+
+### 🔐 Auth Portal Iteration
+- Updated social auth button layout: primary provider spans full row with `Continue with "<Provider>"`, remaining providers use compact labeled buttons. (Gives more clarity to what these buttons do lol...)
+- Added smoother fade/slide transitions for both form content and auth header copy during Login/Register tab changes.
+
+### 🛡️ Two-Factor Setup UX
+- Polished 2FA setup dialog with improved QR presentation.
+- Added `otpauth://` setup URI visibility with copy and direct open actions.
+- Added manual setup key extraction/display with copy support for authenticator fallback flows.
+- Surfaced parsed account label from TOTP URI to make authenticator setup clearer.
+
+---
+
 ## v1.3.2 – Auth Autofill & UX Fix 🔐
 
 Released: April 15, 2026

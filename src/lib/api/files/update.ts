@@ -64,6 +64,7 @@ export async function patchFile(req: NextRequest, key: string) {
     maxViews,
     maxViewsAction,
     anonymousShareEnabled,
+    isFavorite,
   } = (body ?? {}) as Partial<{
     isPublic: boolean | string;
     description: string | null;
@@ -76,6 +77,7 @@ export async function patchFile(req: NextRequest, key: string) {
     maxViews: number | string | null;
     maxViewsAction: string | null;
     anonymousShareEnabled: boolean;
+    isFavorite: boolean | string;
   }>;
 
   const updateValues: Record<string, unknown> = {};
@@ -95,6 +97,14 @@ export async function patchFile(req: NextRequest, key: string) {
     updateValues.folderId = folderId ?? null;
   if (typeof anonymousShareEnabled === "boolean")
     updateValues.anonymousShareEnabled = anonymousShareEnabled;
+  const parsedIsFavorite =
+    typeof isFavorite === "string"
+      ? isFavorite.toLowerCase() === "true"
+      : typeof isFavorite === "boolean"
+        ? isFavorite
+        : undefined;
+  if (typeof parsedIsFavorite === "boolean")
+    updateValues.isFavorite = parsedIsFavorite;
 
   if (typeof newSlug === "string") {
     const candidate = await buildSlugForUser(newSlug.trim(), {

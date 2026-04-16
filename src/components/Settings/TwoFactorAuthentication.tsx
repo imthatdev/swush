@@ -16,7 +16,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +51,7 @@ import { Spinner } from "../ui/spinner";
 import { Label } from "../ui/label";
 import { CardHeader, CardTitle, CardDescription } from "../ui/card";
 import CopyButton from "@/components/Common/CopyButton";
+import { IconEye, IconEyeClosed } from "@tabler/icons-react";
 
 async function fetch2FAStatus(
   setIsTwoFactorEnabled: React.Dispatch<React.SetStateAction<boolean>>,
@@ -65,6 +66,29 @@ async function fetch2FAStatus(
     toast.error("Failed to load 2FA status");
   } finally {
     setLoading(false);
+  }
+}
+
+function parseTotpSetup(totpURI: string | null) {
+  if (!totpURI) {
+    return {
+      manualSetupKey: "",
+      accountLabel: "",
+    };
+  }
+
+  try {
+    const parsed = new URL(totpURI);
+    const manualSetupKey = parsed.searchParams.get("secret") ?? "";
+    const accountLabel = decodeURIComponent(
+      parsed.pathname.replace(/^\/+/, ""),
+    );
+    return { manualSetupKey, accountLabel };
+  } catch {
+    return {
+      manualSetupKey: "",
+      accountLabel: "",
+    };
   }
 }
 
@@ -88,6 +112,10 @@ export default function TwoFactorAuthentication() {
 
   const [otpLoading, setOtpLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { manualSetupKey, accountLabel } = useMemo(
+    () => parseTotpSetup(totpURI),
+    [totpURI],
+  );
 
   const resetDialogState = () => {
     setOtp("");
@@ -372,7 +400,7 @@ export default function TwoFactorAuthentication() {
               {loading ? <Spinner /> : "Enable 2FA with Authenticator"}
             </Button>
           </DialogTrigger>
-          <DialogContent className=" items-center justify-center">
+          <DialogContent className="sm:max-w-md">
             {step === "confirm" && (
               <div className="grid gap-4 w-full max-w-sm">
                 <h3 className="text-lg font-semibold text-foreground">
@@ -391,13 +419,17 @@ export default function TwoFactorAuthentication() {
                     type="button"
                     onClick={() => setShowCurrentPassword((v) => !v)}
                     tabIndex={-1}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-xl cursor-pointer bg-transparent border-0 outline-none"
+                    className="absolute inset-y-0 right-0 flex items-center px-3 cursor-pointer bg-transparent border-0 outline-none text-muted-foreground"
                     style={{ background: "none", border: "none" }}
                     aria-label={
                       showCurrentPassword ? "Hide password" : "Show password"
                     }
                   >
-                    {showCurrentPassword ? "🙈" : "🐵"}
+                    {showCurrentPassword ? (
+                      <IconEyeClosed size={16} />
+                    ) : (
+                      <IconEye size={16} />
+                    )}
                   </button>
                 </div>
                 <Button
@@ -409,14 +441,24 @@ export default function TwoFactorAuthentication() {
               </div>
             )}
             {step === "setup" && totpURI && (
-              <>
-                <div className="flex flex-col items-center gap-2">
-                  <p className="text-white text-sm">
-                    Scan this QR in your Authenticator App:
+              <div className="w-full space-y-4">
+                <div className="space-y-2 text-center">
+                  <p className="text-sm font-medium text-foreground">
+                    Scan this QR with your authenticator app
                   </p>
-                  <QRCode value={totpURI} />
-                  <p className="text-muted-foreground text-sm">
-                    Then enter the 6‑digit code below:
+                  <div className="mx-auto w-fit rounded-2xl border border-border/60 bg-card p-3 shadow-sm">
+                    <div className="rounded-xl bg-white p-3">
+                      <QRCode
+                        value={totpURI}
+                        size={184}
+                        bgColor="#FFFFFF"
+                        fgColor="#111111"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Works with 1Password, Authy, Google Authenticator, and
+                    others.
                   </p>
                   <Button
                     variant="outline"
@@ -427,15 +469,71 @@ export default function TwoFactorAuthentication() {
                     {qrLoading ? "Refreshing..." : "Refresh QR"}
                   </Button>
                 </div>
-                <InputOTP maxLength={6} value={otp} onChange={setOtp}>
-                  <InputOTPGroup>
-                    {Array(6)
-                      .fill(0)
-                      .map((_, idx) => (
-                        <InputOTPSlot key={idx} index={idx} />
-                      ))}
-                  </InputOTPGroup>
-                </InputOTP>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="totp-uri">Setup URI (otpauth)</Label>
+                  <Input
+                    id="totp-uri"
+                    value={totpURI}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <CopyButton
+                      variant="outline"
+                      size="sm"
+                      successMessage="Setup URI copied"
+                      getText={() => totpURI}
+                    >
+                      Copy setup URI
+                    </CopyButton>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={totpURI}>Open setup link</a>
+                    </Button>
+                  </div>
+                  {accountLabel ? (
+                    <p className="text-xs text-muted-foreground">
+                      Account: <span className="font-mono">{accountLabel}</span>
+                    </p>
+                  ) : null}
+                </div>
+
+                {manualSetupKey ? (
+                  <div className="grid gap-2">
+                    <Label htmlFor="totp-manual-key">Manual setup key</Label>
+                    <Input
+                      id="totp-manual-key"
+                      value={manualSetupKey}
+                      readOnly
+                      className="font-mono text-sm tracking-wide"
+                    />
+                    <CopyButton
+                      variant="outline"
+                      size="sm"
+                      successMessage="Manual setup key copied"
+                      getText={() => manualSetupKey}
+                    >
+                      Copy setup key
+                    </CopyButton>
+                  </div>
+                ) : null}
+
+                <p className="text-sm text-muted-foreground text-center">
+                  Then enter the 6‑digit code below:
+                </p>
+
+                <div className="flex justify-center">
+                  <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+                    <InputOTPGroup>
+                      {Array(6)
+                        .fill(0)
+                        .map((_, idx) => (
+                          <InputOTPSlot key={idx} index={idx} />
+                        ))}
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+
                 <Button
                   onClick={verify2FA}
                   disabled={otp.length !== 6 || otpLoading}
@@ -466,7 +564,7 @@ export default function TwoFactorAuthentication() {
                     </CopyButton>
                   </div>
                 )}
-              </>
+              </div>
             )}
           </DialogContent>
         </Dialog>

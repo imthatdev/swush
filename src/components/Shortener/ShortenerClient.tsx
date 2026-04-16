@@ -171,6 +171,9 @@ export default function ShortenerClient({
   const [bulkAddTagOpen, setBulkAddTagOpen] = useState(false);
   const [bulkTagValue, setBulkTagValue] = useState("");
   const [bulkAddTagLoading, setBulkAddTagLoading] = useState(false);
+  const [bulkAction, setBulkAction] = useState<
+    "delete" | "makePublic" | "makePrivate" | null
+  >(null);
   const [analyticsDialogOpen, setAnalyticsDialogOpen] = useState(false);
   const [analyticsLinkIds, setAnalyticsLinkIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
@@ -349,8 +352,9 @@ export default function ShortenerClient({
   ]);
 
   const bulkDelete = async () => {
-    if (selectedIds.length === 0) return;
+    if (selectedIds.length === 0 || bulkAction) return;
     const toDelete = [...selectedIds];
+    setBulkAction("delete");
     try {
       const { ok, fail } = await performBulk(toDelete, async (id) =>
         fetch(shortenerUrl(`/${id}`), { method: "DELETE" }),
@@ -365,6 +369,7 @@ export default function ShortenerClient({
     } finally {
       clearSelection();
       await refresh();
+      setBulkAction(null);
     }
   };
 
@@ -374,9 +379,13 @@ export default function ShortenerClient({
     [paginatedItems],
   );
 
-  const bulkSetVisibility = async (value: boolean) => {
-    if (selectedIds.length === 0) return;
+  const bulkSetVisibility = async (
+    value: boolean,
+    action: "makePublic" | "makePrivate",
+  ) => {
+    if (selectedIds.length === 0 || bulkAction) return;
     const toUpdate = [...selectedIds];
+    setBulkAction(action);
     try {
       const { ok, fail } = await performBulk(toUpdate, async (id) =>
         fetch(shortenerUrl(`/${id}`), {
@@ -399,14 +408,15 @@ export default function ShortenerClient({
     } finally {
       clearSelection();
       await refresh();
+      setBulkAction(null);
     }
   };
 
-  const bulkMakePublic = async () => bulkSetVisibility(true);
-  const bulkMakePrivate = async () => bulkSetVisibility(false);
+  const bulkMakePublic = async () => bulkSetVisibility(true, "makePublic");
+  const bulkMakePrivate = async () => bulkSetVisibility(false, "makePrivate");
 
   const bulkAddTag = async () => {
-    if (selectedIds.length === 0 || bulkAddTagLoading) return;
+    if (selectedIds.length === 0 || bulkAddTagLoading || bulkAction) return;
     const normalizedTag = normalizeTagName(bulkTagValue);
     if (!normalizedTag) {
       toast.error("Select a tag to add");
@@ -463,6 +473,8 @@ export default function ShortenerClient({
       await refresh();
     }
   };
+
+  const bulkActionsDisabled = bulkAction !== null || bulkAddTagLoading;
 
   const refresh = async () => {
     clearCache();
@@ -635,7 +647,7 @@ export default function ShortenerClient({
             variant={showFavoriteOnly ? "default" : "outline"}
             onClick={() => setShowFavoriteOnly((prev) => !prev)}
           >
-            {showFavoriteOnly ? "Showing Favorites" : "Show Favorites"}
+            {showFavoriteOnly ? "Favorites Only" : "Favorites"}
           </Button>
           <Button
             variant={showPublicOnly ? "default" : "outline"}
@@ -703,25 +715,59 @@ export default function ShortenerClient({
             <Button
               variant="outline"
               onClick={() => toggleAllOnPage()}
-              disabled={paginatedItems.length === 0}
+              disabled={paginatedItems.length === 0 || bulkActionsDisabled}
               size="sm"
             >
               Select Page ({paginatedItems.length})
             </Button>
-            <Button variant="outline" size="sm" onClick={clearSelection}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearSelection}
+              disabled={bulkActionsDisabled}
+            >
               Clear
             </Button>
-            <Button variant="outline" size="sm" onClick={bulkMakePublic}>
-              <IconEye /> Make Public
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={bulkMakePublic}
+              disabled={bulkActionsDisabled}
+            >
+              {bulkAction === "makePublic" ? (
+                <>
+                  <IconLoader className="h-4 w-4 animate-spin" />
+                  Making Public...
+                </>
+              ) : (
+                <>
+                  <IconEye /> Make Public
+                </>
+              )}
             </Button>
-            <Button variant="outline" size="sm" onClick={bulkMakePrivate}>
-              <IconEyeOff /> Make Private
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={bulkMakePrivate}
+              disabled={bulkActionsDisabled}
+            >
+              {bulkAction === "makePrivate" ? (
+                <>
+                  <IconLoader className="h-4 w-4 animate-spin" />
+                  Making Private...
+                </>
+              ) : (
+                <>
+                  <IconEyeOff /> Make Private
+                </>
+              )}
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={openCompareAnalytics}
               disabled={
+                bulkActionsDisabled ||
                 selectedIds.length < 2 ||
                 selectedIds.length > MAX_COMPARE_ANALYTICS_LINKS
               }
@@ -739,7 +785,7 @@ export default function ShortenerClient({
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={bulkAddTagLoading || availableTags.length === 0}
+                  disabled={bulkActionsDisabled || availableTags.length === 0}
                 >
                   <IconTag /> Add Tag
                 </Button>
@@ -773,14 +819,14 @@ export default function ShortenerClient({
                   <Button
                     variant="outline"
                     onClick={() => setBulkAddTagOpen(false)}
-                    disabled={bulkAddTagLoading}
+                    disabled={bulkActionsDisabled}
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={bulkAddTag}
                     disabled={
-                      bulkAddTagLoading ||
+                      bulkActionsDisabled ||
                       availableTags.length === 0 ||
                       !normalizeTagName(bulkTagValue)
                     }
@@ -799,8 +845,19 @@ export default function ShortenerClient({
             </Dialog>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm">
-                  Remove Selected
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={bulkActionsDisabled}
+                >
+                  {bulkAction === "delete" ? (
+                    <>
+                      <IconLoader className="h-4 w-4 animate-spin" />
+                      Removing...
+                    </>
+                  ) : (
+                    "Remove Selected"
+                  )}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -814,9 +871,21 @@ export default function ShortenerClient({
                   </p>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={bulkDelete}>
-                    Delete
+                  <AlertDialogCancel disabled={bulkActionsDisabled}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={bulkDelete}
+                    disabled={bulkActionsDisabled}
+                  >
+                    {bulkAction === "delete" ? (
+                      <>
+                        <IconLoader className="h-4 w-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      "Delete"
+                    )}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -848,7 +917,19 @@ export default function ShortenerClient({
               {paginatedItems.map((r, i) => (
                 <TableRow
                   key={r.id ?? i}
-                  className="hover:bg-muted/40 transition-colors"
+                  className={cn(
+                    "hover:bg-muted/40 transition-colors",
+                    selectedCount > 0 && "select-none",
+                  )}
+                  onContextMenu={(e) => {
+                    if (!e.shiftKey) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleOne(r.id, {
+                      shiftKey: true,
+                      orderedIds: visibleSelectionOrder,
+                    });
+                  }}
                 >
                   <TableCell>
                     <Checkbox

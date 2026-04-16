@@ -23,6 +23,7 @@ import {
   IconEdit,
   IconEyeOff,
   IconEye,
+  IconLoader,
   IconListCheck,
   IconDeviceImacPlus,
   IconNote,
@@ -151,6 +152,9 @@ export default function WatchClient({ username }: { username: string }) {
   } = useBulkSelect();
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmBulkOpen, setConfirmBulkOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState<
+    "delete" | "makePublic" | "makePrivate" | null
+  >(null);
 
   const [episodeSelectMode, setEpisodeSelectMode] = useState(false);
   const [selectedEpisodes, setSelectedEpisodes] = useState<Set<string>>(
@@ -445,30 +449,35 @@ export default function WatchClient({ username }: { username: string }) {
     });
 
   async function bulkDeleteSelected() {
-    if (selectedIds.length === 0) return;
+    if (selectedIds.length === 0 || bulkAction) return;
     const toDelete = [...selectedIds];
-    const { ok, fail } = await performBulk(toDelete, async (id) =>
-      fetchSafeInternalApi(watchlistUrl(id), { method: "DELETE" }),
-    );
-    setItems((prev) => prev.filter((x) => !toDelete.includes(x.id)));
-    if (ok > 0) {
-      setTotalCount((prev) => Math.max(0, prev - ok));
-    }
-    if (toDelete.length > 0) {
-      cacheRef.current.clear();
-    }
-    setProgress((prev) => {
-      const next = { ...prev };
-      toDelete.forEach((id) => delete next[id]);
-      return next;
-    });
-    clearSelection();
-    if (fail.length) {
-      toast.error(`Deleted ${ok}/${toDelete.length}.`, {
-        description: fail[0]?.error || "Some deletions failed.",
+    setBulkAction("delete");
+    try {
+      const { ok, fail } = await performBulk(toDelete, async (id) =>
+        fetchSafeInternalApi(watchlistUrl(id), { method: "DELETE" }),
+      );
+      setItems((prev) => prev.filter((x) => !toDelete.includes(x.id)));
+      if (ok > 0) {
+        setTotalCount((prev) => Math.max(0, prev - ok));
+      }
+      if (toDelete.length > 0) {
+        cacheRef.current.clear();
+      }
+      setProgress((prev) => {
+        const next = { ...prev };
+        toDelete.forEach((id) => delete next[id]);
+        return next;
       });
-    } else {
-      toast.success(`Deleted ${ok} item${ok === 1 ? "" : "s"}.`);
+      clearSelection();
+      if (fail.length) {
+        toast.error(`Deleted ${ok}/${toDelete.length}.`, {
+          description: fail[0]?.error || "Some deletions failed.",
+        });
+      } else {
+        toast.success(`Deleted ${ok} item${ok === 1 ? "" : "s"}.`);
+      }
+    } finally {
+      setBulkAction(null);
     }
   }
 
@@ -487,34 +496,46 @@ export default function WatchClient({ username }: { username: string }) {
     }
   }
 
-  async function bulkSetVisibility(visible: boolean) {
+  async function bulkSetVisibility(
+    visible: boolean,
+    action: "makePublic" | "makePrivate",
+  ) {
     const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
-    const { ok, fail } = await performBulk(ids, (id) =>
-      patchWatchlistItem(id, { isPublic: visible }),
-    );
-    if (ok > 0) {
-      setItems((prev) =>
-        prev.map((x) => (ids.includes(x.id) ? { ...x, isPublic: visible } : x)),
+    if (ids.length === 0 || bulkAction) return;
+    setBulkAction(action);
+    try {
+      const { ok, fail } = await performBulk(ids, (id) =>
+        patchWatchlistItem(id, { isPublic: visible }),
       );
-      toast.success(
-        `${visible ? "Made public" : "Made private"} ${ok} item(s)`,
-      );
-      if (ids.length > 0) {
-        cacheRef.current.clear();
+      if (ok > 0) {
+        setItems((prev) =>
+          prev.map((x) =>
+            ids.includes(x.id) ? { ...x, isPublic: visible } : x,
+          ),
+        );
+        toast.success(
+          `${visible ? "Made public" : "Made private"} ${ok} item(s)`,
+        );
+        if (ids.length > 0) {
+          cacheRef.current.clear();
+        }
+        clearSelection();
+        return;
       }
-      clearSelection();
-      return;
-    }
 
-    if (fail.length) {
-      toast.error(`Updated ${ok}/${ids.length}.`, {
-        description: fail[0]?.error || "Some updates failed.",
-      });
-    } else {
-      toast.error("No items updated");
+      if (fail.length) {
+        toast.error(`Updated ${ok}/${ids.length}.`, {
+          description: fail[0]?.error || "Some updates failed.",
+        });
+      } else {
+        toast.error("No items updated");
+      }
+    } finally {
+      setBulkAction(null);
     }
   }
+
+  const bulkActionsDisabled = bulkAction !== null;
 
   function openNotesEditor(item: WatchItem) {
     setNotesItem(item);
@@ -735,24 +756,68 @@ export default function WatchClient({ username }: { username: string }) {
       <Card>
         <CardContent>
           <SelectionBar count={selectedCount} className="mb-3">
-            <Button variant="outline" onClick={toggleAllOnPage} size="sm">
+            <Button
+              variant="outline"
+              onClick={toggleAllOnPage}
+              size="sm"
+              disabled={bulkActionsDisabled}
+            >
               Select Page ({paginatedItems.length})
             </Button>
-            <Button variant="outline" size="sm" onClick={clearSelection}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearSelection}
+              disabled={bulkActionsDisabled}
+            >
               Clear
             </Button>
-            <Button variant="outline" onClick={() => bulkSetVisibility(true)}>
-              <IconEye /> Make public
+            <Button
+              variant="outline"
+              onClick={() => bulkSetVisibility(true, "makePublic")}
+              disabled={bulkActionsDisabled}
+            >
+              {bulkAction === "makePublic" ? (
+                <>
+                  <IconLoader className="h-4 w-4 animate-spin" />
+                  Making public...
+                </>
+              ) : (
+                <>
+                  <IconEye /> Make public
+                </>
+              )}
             </Button>
-            <Button variant="outline" onClick={() => bulkSetVisibility(false)}>
-              <IconEyeOff /> Make private
+            <Button
+              variant="outline"
+              onClick={() => bulkSetVisibility(false, "makePrivate")}
+              disabled={bulkActionsDisabled}
+            >
+              {bulkAction === "makePrivate" ? (
+                <>
+                  <IconLoader className="h-4 w-4 animate-spin" />
+                  Making private...
+                </>
+              ) : (
+                <>
+                  <IconEyeOff /> Make private
+                </>
+              )}
             </Button>
             <Button
               variant="destructive"
               size="sm"
               onClick={() => setConfirmBulkOpen(true)}
+              disabled={bulkActionsDisabled}
             >
-              Remove Selected
+              {bulkAction === "delete" ? (
+                <>
+                  <IconLoader className="h-4 w-4 animate-spin" />
+                  Removing...
+                </>
+              ) : (
+                "Remove Selected"
+              )}
             </Button>
           </SelectionBar>
           {listLoading ? (
@@ -784,6 +849,7 @@ export default function WatchClient({ username }: { username: string }) {
                     className={cn(
                       "border rounded-md p-3 flex gap-3 bg-card relative group animate-fade-in-up",
                       isSelected(it.id) && "border-2 border-primary",
+                      selectedIds.length > 0 && "select-none",
                     )}
                     onClick={
                       selectedIds.length > 0
@@ -793,6 +859,15 @@ export default function WatchClient({ username }: { username: string }) {
                             })
                         : undefined
                     }
+                    onContextMenu={(e) => {
+                      if (!e.shiftKey) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleOne(it.id, {
+                        shiftKey: true,
+                        orderedIds: visibleSelectionOrder,
+                      });
+                    }}
                   >
                     <div className="absolute top-3 left-3 flex items-center gap-2 text-xs text-muted-foreground md:opacity-0 group-hover:opacity-100">
                       <Checkbox
@@ -1193,7 +1268,11 @@ export default function WatchClient({ username }: { username: string }) {
             <DialogTitle>Delete {selectedCount} selected item(s)?</DialogTitle>
           </DialogHeader>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setConfirmBulkOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmBulkOpen(false)}
+              disabled={bulkActionsDisabled}
+            >
               Cancel
             </Button>
             <Button
@@ -1202,8 +1281,16 @@ export default function WatchClient({ username }: { username: string }) {
                 await bulkDeleteSelected();
                 setConfirmBulkOpen(false);
               }}
+              disabled={bulkActionsDisabled}
             >
-              Delete
+              {bulkAction === "delete" ? (
+                <>
+                  <IconLoader className="h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
             </Button>
           </div>
         </DialogContent>

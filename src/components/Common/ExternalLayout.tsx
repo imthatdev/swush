@@ -22,6 +22,7 @@ import { Logo } from "./Logo";
 import Footer from "./Footer";
 import ThemeButton from "./ThemeButton";
 import { PlayerProvider } from "../Vault/Player/PlayerProvider";
+import FloatingIconsBackground from "./FloatingIconsBackground";
 
 export default function ExternalLayout({
   children,
@@ -30,15 +31,19 @@ export default function ExternalLayout({
 }) {
   return (
     <PlayerProvider>
-      <div className="min-h-screen bg-background flex flex-col ">
-        <div className="h-14 flex justify-between items-center px-4 border-b w-full">
+      <div className="relative isolate min-h-screen bg-background flex flex-col">
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-bl from-background via-background to-primary/10" />
+        <FloatingIconsBackground />
+        <div className="relative z-10 h-14 flex justify-between items-center px-4 border-b w-full">
           <Logo />
           <ThemeButton />
         </div>
-        <main className="min-h-[80svh] grid place-items-center p-6 overflow-y-auto">
+        <main className="relative z-10 min-h-[80svh] grid place-items-center p-6 overflow-y-auto">
           {children}
         </main>
-        <Footer />
+        <div className="relative z-10">
+          <Footer />
+        </div>
       </div>
     </PlayerProvider>
   );

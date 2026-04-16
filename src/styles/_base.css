@@ -27,6 +27,26 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  ::selection {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+  }
+
+  ::-moz-selection {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+  }
+
+  @supports (background-color: color-mix(in oklch, black, white)) {
+    ::selection {
+      background-color: color-mix(in oklch, var(--primary) 45%, transparent);
+    }
+
+    ::-moz-selection {
+      background-color: color-mix(in oklch, var(--primary) 45%, transparent);
+    }
+  }
 }
 
 html,

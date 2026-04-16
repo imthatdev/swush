@@ -17,40 +17,32 @@
 
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
-import ExternalLayout from "../Common/ExternalLayout";
 import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
+import { IconEye, IconEyeClosed } from "@tabler/icons-react";
+import ExternalLayout from "../Common/ExternalLayout";
 
 export default function ResetPasswordClient() {
   return (
-    <Suspense
-      fallback={
-        <ExternalLayout>
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Reset your password</CardTitle>
-            </CardHeader>
-            <CardContent>Loading…</CardContent>
-          </Card>
-        </ExternalLayout>
-      }
-    >
-      <ResetPasswordFormInner />
-    </Suspense>
+    <ExternalLayout>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center bg-background px-4">
+            <div className="w-full max-w-md rounded-2xl border border-border/50 bg-card p-8 shadow-lg">
+              Loading...
+            </div>
+          </div>
+        }
+      >
+        <ResetPasswordFormInner />
+      </Suspense>
+    </ExternalLayout>
   );
 }
 
@@ -59,135 +51,86 @@ function ResetPasswordFormInner() {
   const token = sp.get("token") || "";
   const router = useRouter();
 
-  const [pwd, setPwd] = useState("");
-  const [pwd2, setPwd2] = useState("");
-  const [show1, setShow1] = useState(false);
-  const [show2, setShow2] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  async function submit() {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
     if (!token) {
-      toast.warning("Invalid link");
+      toast.error("Invalid reset link");
       return;
     }
-    if (pwd.length < 8) {
-      toast.warning("Password too short");
-      return;
-    }
-    if (pwd !== pwd2) {
-      toast.warning("Passwords don’t match");
-      return;
-    }
-    setLoading(true);
+    setIsLoading(true);
     try {
       const { error } = await authClient.resetPassword({
-        newPassword: pwd,
+        newPassword: password,
         token,
       });
       if (error) {
-        toast.error(error.message || "Could not reset password");
+        toast.error("Password reset failed", {
+          description: error.message,
+        });
         return;
       }
-      toast.success("Password updated", {
-        description: "You can log in with your new password.",
+      toast.success("Password reset successful", {
+        description: "You can now log in with your new password.",
       });
-      setDone(true);
-      setTimeout(() => router.push("/login"), 900);
+      router.push("/login");
+    } catch {
+      toast.error("Unexpected error while resetting password");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }
 
   return (
-    <ExternalLayout>
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Reset your password</CardTitle>
-          <CardDescription>
-            Choose a new password for your account.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          {!token ? (
-            <div className="space-y-3">
-              <div className="rounded-md border bg-muted/60 p-3 text-sm text-muted-foreground">
-                This reset link is invalid or expired. Request a new one to
-                continue.
-              </div>
-              <Link
-                href="/request-password"
-                className="block text-sm text-muted-foreground hover:text-foreground"
+    <div className="flex items-center justify-center bg-background px-4">
+      <form
+        onSubmit={(event) => void handleSubmit(event)}
+        className="w-full max-w-md space-y-4 rounded-2xl border border-border/50 bg-card/80 p-8 shadow-lg backdrop-blur-sm"
+      >
+        <h1 className="text-center text-2xl font-semibold">Reset Password</h1>
+        {!token ? (
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <p className="rounded-2xl border border-destructive/25 bg-destructive/10 p-3">
+              This reset link is invalid or expired.
+            </p>
+            <Link href="/request-password" className="inline-block underline">
+              Request a new reset link
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Enter new password"
+                minLength={8}
+                required
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((value) => !value)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
-                Request a new reset link
-              </Link>
+                {showPassword ? (
+                  <IconEyeClosed size={16} />
+                ) : (
+                  <IconEye size={16} />
+                )}
+              </button>
             </div>
-          ) : done ? (
-            <div className="space-y-3">
-              <div className="rounded-md border bg-muted/60 p-3 text-sm text-muted-foreground">
-                Password updated. Redirecting you to login…
-              </div>
-              <Link
-                href="/login"
-                className="block text-sm text-muted-foreground hover:text-foreground"
-              >
-                Continue to login
-              </Link>
-            </div>
-          ) : (
-            <>
-              <div className="grid gap-2">
-                <Label>New password</Label>
-                <div className="relative">
-                  <Input
-                    type={show1 ? "text" : "password"}
-                    value={pwd}
-                    onChange={(e) => setPwd(e.target.value)}
-                    placeholder="••••••••"
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShow1((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-lg"
-                    aria-label={show1 ? "Hide password" : "Show password"}
-                  >
-                    {show1 ? "🙈" : "🐵"}
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Use at least 8 characters.
-                </p>
-              </div>
-
-              <div className="grid gap-2">
-                <Label>Repeat password</Label>
-                <div className="relative">
-                  <Input
-                    type={show2 ? "text" : "password"}
-                    value={pwd2}
-                    onChange={(e) => setPwd2(e.target.value)}
-                    placeholder="••••••••"
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShow2((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-lg"
-                    aria-label={show2 ? "Hide password" : "Show password"}
-                  >
-                    {show2 ? "🙈" : "🐵"}
-                  </button>
-                </div>
-              </div>
-
-              <Button onClick={() => void submit()} disabled={loading}>
-                {loading ? "Saving…" : "Update password"}
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </ExternalLayout>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? <Spinner /> : "Reset Password"}
+            </Button>
+          </>
+        )}
+      </form>
+    </div>
   );
 }

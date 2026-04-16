@@ -43,6 +43,7 @@ import EmailChangeDialog from "./EmailChangeDialog";
 import PasskeysManager from "./PasskeysManager";
 import TwoFactorAuthentication from "./TwoFactorAuthentication";
 import { cn } from "@/lib/utils";
+import { IconEye, IconEyeClosed } from "@tabler/icons-react";
 
 function PasswordField({
   id,
@@ -77,11 +78,11 @@ function PasswordField({
           type="button"
           onClick={onToggle}
           tabIndex={-1}
-          className="absolute inset-y-0 right-0 flex items-center px-3 text-xl cursor-pointer bg-transparent border-0 outline-none"
+          className="absolute inset-y-0 right-0 flex items-center px-3 cursor-pointer bg-transparent border-0 outline-none text-muted-foreground"
           style={{ background: "none", border: "none" }}
           aria-label={show ? "Hide password" : "Show password"}
         >
-          {show ? "🙈" : "🐵"}
+          {show ? <IconEyeClosed size={16} /> : <IconEye size={16} />}
         </button>
       </div>
     </div>

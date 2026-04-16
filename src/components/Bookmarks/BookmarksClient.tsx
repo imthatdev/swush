@@ -36,6 +36,8 @@ import {
   IconUpload,
   IconArchive,
   IconRss,
+  IconStar,
+  IconStarFilled,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -466,6 +468,9 @@ export default function BookmarksClient({
   const [reloadTick, setReloadTick] = useState(0);
   const [pinFlashId, setPinFlashId] = useState<string | null>(null);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+  const [bulkAction, setBulkAction] = useState<
+    "makePublic" | "makePrivate" | "favorite" | "unfavorite" | null
+  >(null);
   const [bulkAddTagOpen, setBulkAddTagOpen] = useState(false);
   const [bulkTagValue, setBulkTagValue] = useState("");
   const [bulkAddTagLoading, setBulkAddTagLoading] = useState(false);
@@ -531,7 +536,7 @@ export default function BookmarksClient({
   const toggleAllOnPage = () => togglePage(paginatedItems.map((x) => x.id));
 
   const bulkDelete = async () => {
-    if (selectedIds.length === 0 || bulkDeleteLoading) return;
+    if (selectedIds.length === 0 || bulkDeleteLoading || bulkAction) return;
     setBulkDeleteLoading(true);
     const toDelete = [...selectedIds];
     try {
@@ -552,9 +557,13 @@ export default function BookmarksClient({
     }
   };
 
-  const bulkSetVisibility = async (value: boolean) => {
-    if (selectedIds.length === 0) return;
+  const bulkSetVisibility = async (
+    value: boolean,
+    action: "makePublic" | "makePrivate",
+  ) => {
+    if (selectedIds.length === 0 || bulkAction) return;
     const toUpdate = [...selectedIds];
+    setBulkAction(action);
     try {
       const { ok, fail } = await performBulk(toUpdate, async (id) =>
         fetch(bookmarksUrl(`/${id}`), {
@@ -577,14 +586,49 @@ export default function BookmarksClient({
     } finally {
       clearSelection();
       await refresh();
+      setBulkAction(null);
     }
   };
 
-  const bulkMakePublic = async () => bulkSetVisibility(true);
-  const bulkMakePrivate = async () => bulkSetVisibility(false);
+  const bulkMakePublic = async () => bulkSetVisibility(true, "makePublic");
+  const bulkMakePrivate = async () => bulkSetVisibility(false, "makePrivate");
+  const bulkSetFavorite = async (
+    value: boolean,
+    action: "favorite" | "unfavorite",
+  ) => {
+    if (selectedIds.length === 0 || bulkAction) return;
+    const toUpdate = [...selectedIds];
+    setBulkAction(action);
+    try {
+      const { ok, fail } = await performBulk(toUpdate, async (id) =>
+        fetch(bookmarksUrl(`/${id}`), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isFavorite: value }),
+        }),
+      );
+      if (fail.length) {
+        toast.error(`Updated ${ok}/${toUpdate.length}.`, {
+          description: fail[0]?.error || "Some updates failed.",
+        });
+      } else {
+        toast.success(
+          `${value ? "Favorited" : "Unfavorited"} ${ok} bookmark${
+            ok === 1 ? "" : "s"
+          }.`,
+        );
+      }
+    } finally {
+      clearSelection();
+      await refresh();
+      setBulkAction(null);
+    }
+  };
+  const bulkFavorite = async () => bulkSetFavorite(true, "favorite");
+  const bulkUnfavorite = async () => bulkSetFavorite(false, "unfavorite");
 
   const bulkAddTag = async () => {
-    if (selectedIds.length === 0 || bulkAddTagLoading) return;
+    if (selectedIds.length === 0 || bulkAddTagLoading || bulkAction) return;
     const normalizedTag = normalizeTagName(bulkTagValue);
     if (!normalizedTag) {
       toast.error("Select a tag to add");
@@ -641,6 +685,9 @@ export default function BookmarksClient({
       await refresh();
     }
   };
+
+  const bulkActionsDisabled =
+    bulkDeleteLoading || bulkAddTagLoading || bulkAction !== null;
 
   const refresh = async () => {
     clearCache();
@@ -1047,7 +1094,7 @@ export default function BookmarksClient({
             variant={showFavoriteOnly ? "default" : "outline"}
             onClick={() => setShowFavoriteOnly((prev) => !prev)}
           >
-            {showFavoriteOnly ? "Showing Favorites" : "Show Favorites"}
+            {showFavoriteOnly ? "Favorites Only" : "Favorites"}
           </Button>
           <Button
             variant={showPublicOnly ? "default" : "outline"}
@@ -1111,26 +1158,93 @@ export default function BookmarksClient({
             <Button
               variant="outline"
               onClick={() => toggleAllOnPage()}
-              disabled={paginatedItems.length === 0}
+              disabled={paginatedItems.length === 0 || bulkActionsDisabled}
               size="sm"
             >
               Select Page ({paginatedItems.length})
             </Button>
-            <Button variant="outline" size="sm" onClick={clearSelection}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearSelection}
+              disabled={bulkActionsDisabled}
+            >
               Clear
             </Button>
-            <Button variant="outline" size="sm" onClick={bulkMakePublic}>
-              <IconEye /> Make Public
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={bulkMakePublic}
+              disabled={bulkActionsDisabled}
+            >
+              {bulkAction === "makePublic" ? (
+                <>
+                  <IconLoader className="h-4 w-4 animate-spin" />
+                  Making Public...
+                </>
+              ) : (
+                <>
+                  <IconEye /> Make Public
+                </>
+              )}
             </Button>
-            <Button variant="outline" size="sm" onClick={bulkMakePrivate}>
-              <IconEyeOff /> Make Private
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={bulkMakePrivate}
+              disabled={bulkActionsDisabled}
+            >
+              {bulkAction === "makePrivate" ? (
+                <>
+                  <IconLoader className="h-4 w-4 animate-spin" />
+                  Making Private...
+                </>
+              ) : (
+                <>
+                  <IconEyeOff /> Make Private
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={bulkFavorite}
+              disabled={bulkActionsDisabled}
+            >
+              {bulkAction === "favorite" ? (
+                <>
+                  <IconLoader className="h-4 w-4 animate-spin" />
+                  Favoriting...
+                </>
+              ) : (
+                <>
+                  <IconStarFilled className="text-yellow-500" /> Favorite
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={bulkUnfavorite}
+              disabled={bulkActionsDisabled}
+            >
+              {bulkAction === "unfavorite" ? (
+                <>
+                  <IconLoader className="h-4 w-4 animate-spin" />
+                  Unfavoriting...
+                </>
+              ) : (
+                <>
+                  <IconStar /> Unfavorite
+                </>
+              )}
             </Button>
             <Dialog open={bulkAddTagOpen} onOpenChange={setBulkAddTagOpen}>
               <DialogTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={bulkAddTagLoading || availableTags.length === 0}
+                  disabled={bulkActionsDisabled || availableTags.length === 0}
                 >
                   <IconTag /> Add Tag
                 </Button>
@@ -1164,14 +1278,14 @@ export default function BookmarksClient({
                   <Button
                     variant="outline"
                     onClick={() => setBulkAddTagOpen(false)}
-                    disabled={bulkAddTagLoading}
+                    disabled={bulkActionsDisabled}
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={bulkAddTag}
                     disabled={
-                      bulkAddTagLoading ||
+                      bulkActionsDisabled ||
                       availableTags.length === 0 ||
                       !normalizeTagName(bulkTagValue)
                     }
@@ -1193,7 +1307,7 @@ export default function BookmarksClient({
                 <Button
                   variant="destructive"
                   size="sm"
-                  disabled={bulkDeleteLoading}
+                  disabled={bulkActionsDisabled}
                 >
                   {bulkDeleteLoading ? (
                     <>
@@ -1213,12 +1327,12 @@ export default function BookmarksClient({
                   </AlertDialogTitle>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel disabled={bulkDeleteLoading}>
+                  <AlertDialogCancel disabled={bulkActionsDisabled}>
                     Cancel
                   </AlertDialogCancel>
                   <AlertDialogAction
                     onClick={bulkDelete}
-                    disabled={bulkDeleteLoading}
+                    disabled={bulkActionsDisabled}
                   >
                     {bulkDeleteLoading ? (
                       <>
@@ -1697,14 +1811,26 @@ function BookmarkCard({
         isMasonryView && "bg-card/90",
         isRowsView && "border-l border-l-border",
         isMinimalView && "bg-background/60 border-dashed shadow-none",
+        enableCardSelection && "select-none",
         selected && "ring-2 ring-primary",
         flash && "ring-2 ring-primary shadow-primary",
       )}
       style={{ animationDelay: `${index * 60}ms` }}
       onClick={enableCardSelection ? onToggle : undefined}
+      onContextMenu={(e) => {
+        if (!e.shiftKey || !onToggle) return;
+        e.preventDefault();
+        e.stopPropagation();
+        onToggle();
+      }}
     >
       <div
-        className="absolute left-2 top-2 z-50 md:opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        className={cn(
+          "absolute bottom-2 right-2 z-50 transition-opacity duration-300",
+          selected || enableCardSelection
+            ? "opacity-100"
+            : "opacity-0 group-hover:opacity-100",
+        )}
         onClick={(e) => {
           e.stopPropagation();
           onToggle?.();
