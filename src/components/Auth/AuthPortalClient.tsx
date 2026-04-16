@@ -55,11 +55,11 @@ import { Label } from "@/components/ui/label";
 import { useAppConfig } from "@/components/Providers/AppConfigProvider";
 import SocialAuthButtons from "@/components/Auth/SocialAuthButtons";
 import TurnstileWidget from "@/components/Common/TurnstileWidget";
-import AuthCornerButtons from "@/components/Auth/AuthCornerButtons";
 import { LogoIcon } from "@/components/Common/Logo";
 import { authClient } from "@/lib/auth-client";
 import { checkInvitation, incrementInviteUsage } from "@/lib/client/invites";
 import { apiV1 } from "@/lib/api-path";
+import ExternalLayout from "../Common/ExternalLayout";
 
 type AuthMode = "login" | "register";
 
@@ -143,8 +143,8 @@ function mulberry32(seed: number) {
   };
 }
 
-function createFloatingSeeds(count: number) {
-  const random = mulberry32(76411);
+function createFloatingSeeds(count: number, seed: number) {
+  const random = mulberry32(seed);
   return Array.from({ length: count }, (_, id) => {
     const depth = 0.75 + random() * 0.9;
     return {
@@ -165,66 +165,6 @@ function createFloatingSeeds(count: number) {
       depth,
     } satisfies FloatingSeed;
   });
-}
-
-function FloatingIconLayer({
-  slowed,
-  dimmed,
-  unlocking,
-}: {
-  slowed: boolean;
-  dimmed: boolean;
-  unlocking: boolean;
-}) {
-  const seeds = useMemo(() => createFloatingSeeds(36), []);
-  const pace = slowed ? 1.35 : 1;
-
-  return (
-    <div className="pointer-events-none absolute inset-0 z-1 overflow-hidden">
-      {seeds.map((seed) => {
-        const Icon = floatingIconComponents[seed.iconIndex];
-        const duration =
-          (unlocking
-            ? Math.max(3.2, seed.duration * 0.32)
-            : seed.duration * pace) / seed.depth;
-        const yTravel = unlocking ? -(seed.travel + 220) : -seed.travel;
-        const xTravel = unlocking ? seed.drift * 2.2 : seed.drift;
-
-        return (
-          <motion.div
-            key={seed.id}
-            className="absolute text-violet-100/85"
-            style={{
-              left: `${seed.x}%`,
-              top: `${seed.y}%`,
-              width: `${seed.size}px`,
-              height: `${seed.size}px`,
-              filter: `blur(${seed.blur}px)`,
-              opacity: dimmed ? seed.opacity * 0.55 : seed.opacity,
-            }}
-            animate={{
-              y: [0, yTravel],
-              x: unlocking ? [0, xTravel] : [0, xTravel, -xTravel * 0.75, 0],
-              rotate: unlocking
-                ? [seed.rotate, seed.rotate + seed.spin * 1.8]
-                : [seed.rotate, seed.rotate + seed.spin],
-              scale: unlocking
-                ? [seed.scale, seed.scale * 1.1]
-                : [seed.scale * 0.92, seed.scale * 1.08, seed.scale * 0.92],
-            }}
-            transition={{
-              duration,
-              delay: seed.delay,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-          >
-            <Icon className="h-full w-full" stroke={1.5} />
-          </motion.div>
-        );
-      })}
-    </div>
-  );
 }
 
 export default function AuthPortalClient({
@@ -249,6 +189,25 @@ export default function AuthPortalClient({
         ? "/login"
         : `/login?next=${encodeURIComponent(postLoginPath)}`,
     [postLoginPath],
+  );
+  const authSwitchParams = useMemo(() => {
+    const params = new URLSearchParams();
+    if (postLoginPath !== "/vault") {
+      params.set("next", postLoginPath);
+    }
+    if (inviteToken) {
+      params.set("invite", inviteToken);
+    }
+    const query = params.toString();
+    return query ? `?${query}` : "";
+  }, [inviteToken, postLoginPath]);
+  const registerHref = useMemo(
+    () => `/register${authSwitchParams}`,
+    [authSwitchParams],
+  );
+  const loginHref = useMemo(
+    () => `/login${authSwitchParams}`,
+    [authSwitchParams],
   );
 
   const [formFocused, setFormFocused] = useState(false);
@@ -704,398 +663,353 @@ export default function AuthPortalClient({
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
-      <div className="relative w-full overflow-x-hidden overflow-y-auto lg:w-1/2">
-        <AuthCornerButtons />
-        <div className="pointer-events-none absolute inset-0 bg-linear-to-bl from-background via-background to-primary/10" />
-        <FloatingIconLayer
-          slowed={false}
-          dimmed={formFocused}
-          unlocking={unlocking}
-        />
-
-        <div className="relative z-10 grid min-h-screen grid-cols-1 grid-rows-[minmax(4.5rem,1fr)_auto_minmax(0,1fr)] p-6 lg:p-12">
-          <div className="row-start-2 w-full max-w-md justify-self-center rounded-2xl border border-border/40 bg-card/70 p-6 shadow-xl backdrop-blur-md">
-            <div className="mb-6">
-              <div className="mb-4 flex justify-center">
-                <LogoIcon size={38} />
-              </div>
-              <h1 className="text-center text-3xl font-bold">
-                {mode === "login" ? "Welcome back" : "Create an account"}
-              </h1>
-              <p className="max-w-sm text-center text-muted-foreground">
-                {mode === "login"
-                  ? "Enter your credentials to swush"
-                  : "Join now and start swushing"}
-              </p>
-            </div>
-
-            {mode === "login" ? (
-              <form
-                className="space-y-4"
-                noValidate
-                onFocusCapture={handleFormFocus}
-                onBlurCapture={handleFormBlur}
-                onSubmit={loginForm.handleSubmit(onLoginSubmit)}
-              >
-                {socialAuth.hasProviders ? (
-                  <div className="space-y-3">
-                    {socialAuth.content}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="h-px flex-1 bg-border" />
-                      Or
-                      <span className="h-px flex-1 bg-border" />
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="space-y-1.5">
-                  <Input
-                    {...loginForm.register("emailOrUsername")}
-                    id="emailOrUsername"
-                    placeholder="Email or Username"
-                    type="text"
-                    autoComplete="username webauthn"
-                    aria-invalid={!!loginForm.formState.errors.emailOrUsername}
-                    aria-describedby={
-                      loginForm.formState.errors.emailOrUsername
-                        ? "emailOrUsername-error"
-                        : undefined
-                    }
-                    disabled={loginLoading}
-                  />
-                  {loginForm.formState.errors.emailOrUsername ? (
-                    <p
-                      id="emailOrUsername-error"
-                      className="text-xs text-red-500"
-                    >
-                      {loginForm.formState.errors.emailOrUsername.message}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="space-y-1">
-                  <div className="relative">
-                    <Input
-                      type={showLoginPassword ? "text" : "password"}
-                      {...loginForm.register("password")}
-                      id="password"
-                      placeholder="Password"
-                      autoComplete="current-password webauthn"
-                      aria-invalid={!!loginForm.formState.errors.password}
-                      aria-describedby={
-                        loginForm.formState.errors.password
-                          ? "password-error"
-                          : undefined
-                      }
-                      disabled={loginLoading}
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowLoginPassword((value) => !value)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                      aria-label={
-                        showLoginPassword ? "Hide password" : "Show password"
-                      }
-                    >
-                      {showLoginPassword ? (
-                        <IconEyeClosed size={16} />
-                      ) : (
-                        <IconEye size={16} />
-                      )}
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    className="text-xs text-primary hover:underline"
-                    onClick={() => router.push("/request-password")}
-                  >
-                    Forgot password?
-                  </button>
-                  {loginForm.formState.errors.password ? (
-                    <p id="password-error" className="text-xs text-red-500">
-                      {loginForm.formState.errors.password.message}
-                    </p>
-                  ) : null}
-                </div>
-
-                {turnstileSiteKey ? (
-                  <div className="space-y-2">
-                    <TurnstileWidget
-                      key={`login-captcha-${loginCaptchaKey}`}
-                      siteKey={turnstileSiteKey}
-                      className="overflow-hidden rounded-2xl border border-border/40 bg-background/55"
-                      onVerify={(token) => setLoginCaptchaToken(token)}
-                      onExpire={() => setLoginCaptchaToken("")}
-                      onError={() => setLoginCaptchaToken("")}
-                    />
-                  </div>
-                ) : null}
-
-                <div className="flex flex-col gap-2">
-                  <Button
-                    type="submit"
-                    disabled={loginLoading || loginCaptchaVerifying}
-                    aria-busy={loginLoading || loginCaptchaVerifying}
-                    className="w-full"
-                  >
-                    {loginLoading ? "Signing in..." : "Sign in"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={signInWithPasskey}
-                    disabled={loginLoading || passkeyLoading}
-                    aria-busy={passkeyLoading}
-                    className="w-full"
-                  >
-                    {passkeyLoading
-                      ? "Launching passkey..."
-                      : "Use Passkey Instead"}
-                  </Button>
-                </div>
-
-                <div className="text-sm text-muted-foreground">
-                  Don&apos;t have an account?{" "}
-                  <Link
-                    href="/register"
-                    className="text-primary hover:underline"
-                  >
-                    Create one
-                  </Link>
-                </div>
-              </form>
-            ) : (
-              <form
-                className="space-y-4"
-                onFocusCapture={handleFormFocus}
-                onBlurCapture={handleFormBlur}
-                onSubmit={registerForm.handleSubmit(onRegisterSubmit)}
-              >
-                {requiresSetup ? (
-                  <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm">
-                    Setup required. Complete setup before registering new users.
-                    <div className="mt-1">
-                      <Link href="/setup" className="underline">
-                        Go to setup
-                      </Link>
-                    </div>
-                  </div>
-                ) : null}
-
-                {allowPublicRegistration === false &&
-                invitation?.valid !== true &&
-                !requiresSetup ? (
-                  <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-3 text-sm">
-                    Registration is currently closed. {invitation?.reason}
-                  </div>
-                ) : null}
-
-                {allowPublicRegistration === false &&
-                invitation?.valid === true ? (
-                  <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-sm">
-                    Registration is closed, but your invitation allows access.
-                  </div>
-                ) : null}
-
-                {!registrationBlocked && socialAuth.hasProviders ? (
-                  <div className="space-y-3">
-                    {socialAuth.content}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="h-px flex-1 bg-border" />
-                      Or
-                      <span className="h-px flex-1 bg-border" />
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    {...registerForm.register("name")}
-                    id="name"
-                    placeholder="Your name"
-                    disabled={registerLoading || registrationBlocked}
-                  />
-                  {registerForm.formState.errors.name ? (
-                    <p className="text-xs text-red-500">
-                      {registerForm.formState.errors.name.message}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    {...registerForm.register("username")}
-                    id="username"
-                    placeholder="username"
-                    disabled={registerLoading || registrationBlocked}
-                  />
-                  {registerForm.formState.errors.username ? (
-                    <p className="text-xs text-red-500">
-                      {registerForm.formState.errors.username.message}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    {...registerForm.register("email")}
-                    id="email"
-                    placeholder="you@example.com"
-                    type="email"
-                    disabled={registerLoading || registrationBlocked}
-                  />
-                  {registerForm.formState.errors.email ? (
-                    <p className="text-xs text-red-500">
-                      {registerForm.formState.errors.email.message}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="register-password">Password</Label>
-                  <div className="relative">
-                    <Input
-                      type={showRegisterPassword ? "text" : "password"}
-                      {...registerForm.register("password")}
-                      id="register-password"
-                      placeholder={`At least ${minLength} characters`}
-                      disabled={registerLoading || registrationBlocked}
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowRegisterPassword((value) => !value)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                      aria-label={
-                        showRegisterPassword ? "Hide password" : "Show password"
-                      }
-                    >
-                      {showRegisterPassword ? (
-                        <IconEyeClosed size={16} />
-                      ) : (
-                        <IconEye size={16} />
-                      )}
-                    </button>
-                  </div>
-                  {registerForm.formState.errors.password ? (
-                    <p className="text-xs text-red-500">
-                      {registerForm.formState.errors.password.message}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="flex items-start gap-2">
-                  <Controller
-                    control={registerForm.control}
-                    name="termsAccepted"
-                    defaultValue={false}
-                    render={({ field }) => (
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={(value) =>
-                          field.onChange(Boolean(value))
-                        }
-                        disabled={registerLoading || registrationBlocked}
-                        className="mt-0.5"
-                      />
-                    )}
-                  />
-                  <Label className="flex flex-wrap gap-1 text-xs text-muted-foreground md:text-sm">
-                    <span>Accept</span>
-                    <Link href="/terms" target="_blank" className="underline">
-                      Terms of Service
-                    </Link>
-                    <span>and</span>
-                    <Link href="/privacy" target="_blank" className="underline">
-                      Privacy Policy
-                    </Link>
-                  </Label>
-                </div>
-                {registerForm.formState.errors.termsAccepted ? (
-                  <p className="text-xs text-red-500">
-                    {registerForm.formState.errors.termsAccepted.message}
-                  </p>
-                ) : null}
-
-                {turnstileSiteKey && !registrationBlocked ? (
-                  <div className="space-y-2">
-                    <TurnstileWidget
-                      key={`register-captcha-${registerCaptchaKey}`}
-                      siteKey={turnstileSiteKey}
-                      className="overflow-hidden rounded-2xl border border-border/40 bg-background/55"
-                      onVerify={(token) => setRegisterCaptchaToken(token)}
-                      onExpire={() => setRegisterCaptchaToken("")}
-                      onError={() => setRegisterCaptchaToken("")}
-                    />
-                    {registerCaptchaVerifying ? (
-                      <p className="text-xs text-muted-foreground">
-                        Verifying captcha...
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                <Button
-                  type="submit"
-                  disabled={
-                    registerLoading ||
-                    registrationBlocked ||
-                    registerCaptchaVerifying
-                  }
-                  className="w-full"
-                >
-                  {registerLoading ? "Creating account..." : "Create Account"}
-                </Button>
-
-                <div className="text-sm text-muted-foreground">
-                  Already have an account?{" "}
-                  <Link href="/login" className="text-primary hover:underline">
-                    Sign in
-                  </Link>
-                </div>
-              </form>
-            )}
-
-            <p className="mt-4 text-xs text-muted-foreground">
-              Need help?{" "}
-              <Link href={`mailto:${supportEmail}`} className="underline">
-                {supportEmail}
-              </Link>
-            </p>
+    <ExternalLayout>
+      <div className="row-start-2 w-full max-w-md justify-self-center rounded-2xl border border-border/40 bg-card/70 p-6 shadow-xl backdrop-blur-md">
+        <div className="mb-6">
+          <div className="mb-4 flex justify-center">
+            <LogoIcon size={38} />
           </div>
-        </div>
-      </div>
-
-      <div className="relative hidden overflow-hidden lg:block lg:w-1/2">
-        <div className="absolute inset-0">
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="h-full w-full object-cover"
-          >
-            <source src="/auth-bg.mp4" type="video/mp4" />
-          </video>
-          <div className="absolute inset-0 bg-linear-to-r from-background to-primary/40" />
-        </div>
-
-        <div className="relative flex h-full flex-col items-center justify-center p-12 text-center">
-          <h2 className="mb-4 text-balance text-5xl font-bold leading-tight text-foreground">
-            Your next workflow starts{" "}
-            <span className="rounded-2xl bg-primary px-2 py-0.5 italic">
-              here
-            </span>
-          </h2>
-          <p className="max-w-md text-pretty text-lg text-muted-foreground">
-            Save links, organize files, and share everything with Swush
+          <h1 className="text-center text-3xl font-bold">
+            {mode === "login" ? "Welcome back" : "Create an account"}
+          </h1>
+          <p className="max-w-sm text-center text-muted-foreground">
+            {mode === "login"
+              ? "Enter your credentials to swush"
+              : "Join now and start swushing"}
           </p>
         </div>
+
+        {mode === "login" ? (
+          <form
+            className="space-y-4"
+            noValidate
+            onFocusCapture={handleFormFocus}
+            onBlurCapture={handleFormBlur}
+            onSubmit={loginForm.handleSubmit(onLoginSubmit)}
+          >
+            {socialAuth.hasProviders ? (
+              <div className="space-y-3">
+                {socialAuth.content}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="h-px flex-1 bg-border" />
+                  Or
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+              </div>
+            ) : null}
+
+            <div className="space-y-1.5">
+              <Input
+                {...loginForm.register("emailOrUsername")}
+                id="emailOrUsername"
+                placeholder="Email or Username"
+                type="text"
+                autoComplete="username webauthn"
+                aria-invalid={!!loginForm.formState.errors.emailOrUsername}
+                aria-describedby={
+                  loginForm.formState.errors.emailOrUsername
+                    ? "emailOrUsername-error"
+                    : undefined
+                }
+                disabled={loginLoading}
+              />
+              {loginForm.formState.errors.emailOrUsername ? (
+                <p id="emailOrUsername-error" className="text-xs text-red-500">
+                  {loginForm.formState.errors.emailOrUsername.message}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="space-y-1">
+              <div className="relative">
+                <Input
+                  type={showLoginPassword ? "text" : "password"}
+                  {...loginForm.register("password")}
+                  id="password"
+                  placeholder="Password"
+                  autoComplete="current-password webauthn"
+                  aria-invalid={!!loginForm.formState.errors.password}
+                  aria-describedby={
+                    loginForm.formState.errors.password
+                      ? "password-error"
+                      : undefined
+                  }
+                  disabled={loginLoading}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPassword((value) => !value)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  aria-label={
+                    showLoginPassword ? "Hide password" : "Show password"
+                  }
+                >
+                  {showLoginPassword ? (
+                    <IconEyeClosed size={16} />
+                  ) : (
+                    <IconEye size={16} />
+                  )}
+                </button>
+              </div>
+              <button
+                type="button"
+                className="text-xs text-primary hover:underline"
+                onClick={() => router.push("/request-password")}
+              >
+                Forgot password?
+              </button>
+              {loginForm.formState.errors.password ? (
+                <p id="password-error" className="text-xs text-red-500">
+                  {loginForm.formState.errors.password.message}
+                </p>
+              ) : null}
+            </div>
+
+            {turnstileSiteKey ? (
+              <div className="space-y-2">
+                <TurnstileWidget
+                  key={`login-captcha-${loginCaptchaKey}`}
+                  siteKey={turnstileSiteKey}
+                  className="overflow-hidden rounded-2xl border border-border/40 bg-background/55"
+                  onVerify={(token) => setLoginCaptchaToken(token)}
+                  onExpire={() => setLoginCaptchaToken("")}
+                  onError={() => setLoginCaptchaToken("")}
+                />
+              </div>
+            ) : null}
+
+            <div className="flex flex-col gap-2">
+              <Button
+                type="submit"
+                disabled={loginLoading || loginCaptchaVerifying}
+                aria-busy={loginLoading || loginCaptchaVerifying}
+                className="w-full"
+              >
+                {loginLoading ? "Signing in..." : "Sign in"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={signInWithPasskey}
+                disabled={loginLoading || passkeyLoading}
+                aria-busy={passkeyLoading}
+                className="w-full"
+              >
+                {passkeyLoading
+                  ? "Launching passkey..."
+                  : "Use Passkey Instead"}
+              </Button>
+            </div>
+
+            <div className="text-sm text-muted-foreground">
+              Don&apos;t have an account?{" "}
+              <Link
+                href={registerHref}
+                className="text-primary hover:underline"
+              >
+                Create one
+              </Link>
+            </div>
+          </form>
+        ) : (
+          <form
+            className="space-y-4"
+            onFocusCapture={handleFormFocus}
+            onBlurCapture={handleFormBlur}
+            onSubmit={registerForm.handleSubmit(onRegisterSubmit)}
+          >
+            {requiresSetup ? (
+              <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm">
+                Setup required. Complete setup before registering new users.
+                <div className="mt-1">
+                  <Link href="/setup" className="underline">
+                    Go to setup
+                  </Link>
+                </div>
+              </div>
+            ) : null}
+
+            {allowPublicRegistration === false &&
+            invitation?.valid !== true &&
+            !requiresSetup ? (
+              <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-3 text-sm">
+                Registration is currently closed. {invitation?.reason}
+              </div>
+            ) : null}
+
+            {allowPublicRegistration === false && invitation?.valid === true ? (
+              <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-sm">
+                Registration is closed, but your invitation allows access.
+              </div>
+            ) : null}
+
+            {!registrationBlocked && socialAuth.hasProviders ? (
+              <div className="space-y-3">
+                {socialAuth.content}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="h-px flex-1 bg-border" />
+                  Or
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+              </div>
+            ) : null}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                {...registerForm.register("name")}
+                id="name"
+                placeholder="Your name"
+                disabled={registerLoading || registrationBlocked}
+              />
+              {registerForm.formState.errors.name ? (
+                <p className="text-xs text-red-500">
+                  {registerForm.formState.errors.name.message}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                {...registerForm.register("username")}
+                id="username"
+                placeholder="username"
+                disabled={registerLoading || registrationBlocked}
+              />
+              {registerForm.formState.errors.username ? (
+                <p className="text-xs text-red-500">
+                  {registerForm.formState.errors.username.message}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                {...registerForm.register("email")}
+                id="email"
+                placeholder="you@example.com"
+                type="email"
+                disabled={registerLoading || registrationBlocked}
+              />
+              {registerForm.formState.errors.email ? (
+                <p className="text-xs text-red-500">
+                  {registerForm.formState.errors.email.message}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="register-password">Password</Label>
+              <div className="relative">
+                <Input
+                  type={showRegisterPassword ? "text" : "password"}
+                  {...registerForm.register("password")}
+                  id="register-password"
+                  placeholder={`At least ${minLength} characters`}
+                  disabled={registerLoading || registrationBlocked}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowRegisterPassword((value) => !value)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  aria-label={
+                    showRegisterPassword ? "Hide password" : "Show password"
+                  }
+                >
+                  {showRegisterPassword ? (
+                    <IconEyeClosed size={16} />
+                  ) : (
+                    <IconEye size={16} />
+                  )}
+                </button>
+              </div>
+              {registerForm.formState.errors.password ? (
+                <p className="text-xs text-red-500">
+                  {registerForm.formState.errors.password.message}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex items-start gap-2">
+              <Controller
+                control={registerForm.control}
+                name="termsAccepted"
+                defaultValue={false}
+                render={({ field }) => (
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={(value) => field.onChange(Boolean(value))}
+                    disabled={registerLoading || registrationBlocked}
+                    className="mt-0.5"
+                  />
+                )}
+              />
+              <Label className="flex flex-wrap gap-1 text-xs text-muted-foreground md:text-sm">
+                <span>Accept</span>
+                <Link href="/terms" target="_blank" className="underline">
+                  Terms of Service
+                </Link>
+                <span>and</span>
+                <Link href="/privacy" target="_blank" className="underline">
+                  Privacy Policy
+                </Link>
+              </Label>
+            </div>
+            {registerForm.formState.errors.termsAccepted ? (
+              <p className="text-xs text-red-500">
+                {registerForm.formState.errors.termsAccepted.message}
+              </p>
+            ) : null}
+
+            {turnstileSiteKey && !registrationBlocked ? (
+              <div className="space-y-2">
+                <TurnstileWidget
+                  key={`register-captcha-${registerCaptchaKey}`}
+                  siteKey={turnstileSiteKey}
+                  className="overflow-hidden rounded-2xl border border-border/40 bg-background/55"
+                  onVerify={(token) => setRegisterCaptchaToken(token)}
+                  onExpire={() => setRegisterCaptchaToken("")}
+                  onError={() => setRegisterCaptchaToken("")}
+                />
+                {registerCaptchaVerifying ? (
+                  <p className="text-xs text-muted-foreground">
+                    Verifying captcha...
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            <Button
+              type="submit"
+              disabled={
+                registerLoading ||
+                registrationBlocked ||
+                registerCaptchaVerifying
+              }
+              className="w-full"
+            >
+              {registerLoading ? "Creating account..." : "Create Account"}
+            </Button>
+
+            <div className="text-sm text-muted-foreground">
+              Already have an account?{" "}
+              <Link href={loginHref} className="text-primary hover:underline">
+                Sign in
+              </Link>
+            </div>
+          </form>
+        )}
+
+        <p className="mt-4 text-xs text-muted-foreground">
+          Need help?{" "}
+          <Link href={`mailto:${supportEmail}`} className="underline">
+            {supportEmail}
+          </Link>
+        </p>
       </div>
 
       <Dialog
@@ -1216,6 +1130,6 @@ export default function AuthPortalClient({
           </Button>
         </DialogContent>
       </Dialog>
-    </div>
+    </ExternalLayout>
   );
 }

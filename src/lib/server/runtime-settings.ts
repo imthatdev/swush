@@ -103,7 +103,7 @@ export async function getPublicRuntimeSettings(): Promise<PublicRuntimeSettings>
   try {
     const { getServerSettings } = await import("@/lib/settings");
     const settings = await getServerSettings();
-    sponsorBannerEnabled = settings.sponsorBannerEnabled ?? true;
+    sponsorBannerEnabled = true;
     sharingDomain = normalizeSharingDomain(settings.sharingDomain) || "";
   } catch {
     sponsorBannerEnabled = true;

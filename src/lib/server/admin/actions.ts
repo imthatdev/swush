@@ -347,10 +347,7 @@ export async function adminUpdateUser(
       };
     }
 
-    await db
-      .update(user)
-      .set({ emailVerified: true })
-      .where(eq(user.id, id));
+    await db.update(user).set({ emailVerified: true }).where(eq(user.id, id));
 
     return {
       ok: true as const,
@@ -616,14 +613,8 @@ const SettingsSchema = z.object({
 
   filesLimitUser: z.number().int().min(0).optional(),
   filesLimitAdmin: z.number().int().min(0).optional(),
-  notesLimitUser: z.number().int().min(0).optional(),
-  notesLimitAdmin: z.number().int().min(0).optional(),
   bookmarksLimitUser: z.number().int().min(0).optional(),
   bookmarksLimitAdmin: z.number().int().min(0).optional(),
-  snippetsLimitUser: z.number().int().min(0).optional(),
-  snippetsLimitAdmin: z.number().int().min(0).optional(),
-  recipesLimitUser: z.number().int().min(0).optional(),
-  recipesLimitAdmin: z.number().int().min(0).optional(),
   shortLinksLimitUser: z.number().int().min(0).optional(),
   shortLinksLimitAdmin: z.number().int().min(0).optional(),
 
@@ -631,7 +622,6 @@ const SettingsSchema = z.object({
   disallowedExtensions: z.union([StringArray, z.null()]).optional(),
   preservedUsernames: z.union([StringArray, z.null()]).optional(),
   allowRemoteUpload: z.boolean(),
-  sponsorBannerEnabled: z.boolean(),
   disableApiTokens: z.boolean(),
 });
 
@@ -652,14 +642,8 @@ export async function adminGetSettings() {
     adminMaxStorageMb: settings.adminMaxStorageMb,
     filesLimitUser: settings.filesLimitUser,
     filesLimitAdmin: settings.filesLimitAdmin,
-    notesLimitUser: settings.notesLimitUser,
-    notesLimitAdmin: settings.notesLimitAdmin,
     bookmarksLimitUser: settings.bookmarksLimitUser,
     bookmarksLimitAdmin: settings.bookmarksLimitAdmin,
-    snippetsLimitUser: settings.snippetsLimitUser,
-    snippetsLimitAdmin: settings.snippetsLimitAdmin,
-    recipesLimitUser: settings.recipesLimitUser,
-    recipesLimitAdmin: settings.recipesLimitAdmin,
     shortLinksLimitUser: settings.shortLinksLimitUser,
     shortLinksLimitAdmin: settings.shortLinksLimitAdmin,
     allowedMimePrefixes: settings.allowedMimePrefixes ?? null,
@@ -667,7 +651,6 @@ export async function adminGetSettings() {
     preservedUsernames: settings.preservedUsernames ?? null,
     setupCompleted: settings.setupCompleted,
     allowRemoteUpload: settings.allowRemoteUpload,
-    sponsorBannerEnabled: settings.sponsorBannerEnabled,
     disableApiTokens: settings.disableApiTokens,
     createdAt: settings.createdAt,
     updatedAt: settings.updatedAt,

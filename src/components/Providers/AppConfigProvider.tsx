@@ -47,7 +47,6 @@ export function useAppConfig() {
       appName: "Swush",
       supportName: "Swush Support",
       supportEmail: "help@swush.local",
-      sponsorBannerEnabled: true,
       posthogKey: "",
       posthogHost: "https://app.posthog.com",
       vapidPublicKey: "",

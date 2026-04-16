@@ -66,35 +66,42 @@ function mulberry32(seed: number) {
 
 function createFloatingSeeds(count: number, seed: number) {
   const random = mulberry32(seed);
-  return Array.from({ length: count }, (_, id) => ({
-    id,
-    iconIndex: Math.floor(random() * floatingIconComponents.length),
-    x: random() * 100,
-    y: random() * 120 - 10,
-    drift: (random() - 0.5) * 34,
-    duration: 16 + random() * 20,
-    delay: random() * 8,
-    size: 12 + random() * 24,
-    opacity: 0.035 + random() * 0.08,
-    blur: random() * 2.2,
-    rotate: random() * 360,
-    spin: (random() - 0.5) * 84,
-    travel: 120 + random() * 220,
-  } satisfies FloatingSeed));
+  return Array.from(
+    { length: count },
+    (_, id) =>
+      ({
+        id,
+        iconIndex: Math.floor(random() * floatingIconComponents.length),
+        x: random() * 100,
+        y: random() * 120 - 10,
+        drift: (random() - 0.5) * 34,
+        duration: 16 + random() * 20,
+        delay: random() * 8,
+        size: 16 + random() * 24,
+        opacity: 0.035 + random() * 0.08,
+        blur: random() * 2.2,
+        rotate: random() * 360,
+        spin: (random() - 0.5) * 84,
+        travel: 120 + random() * 220,
+      }) satisfies FloatingSeed,
+  );
 }
 
 export default function FloatingIconsBackground({
   seed = 124771,
   count = 30,
   className = "pointer-events-none absolute inset-0 z-0 overflow-hidden",
-  iconClassName = "text-primary/70",
+  iconClassName = "text-primary",
+  iconGlyphClassName,
 }: {
   seed?: number;
   count?: number;
   className?: string;
   iconClassName?: string;
+  iconGlyphClassName?: string;
 }) {
   const seeds = useMemo(() => createFloatingSeeds(count, seed), [count, seed]);
+  const glyphClassName = iconGlyphClassName ?? iconClassName;
 
   return (
     <div className={className}>
@@ -125,7 +132,10 @@ export default function FloatingIconsBackground({
               ease: "linear",
             }}
           >
-            <Icon className="h-full w-full" stroke={1.5} />
+            <Icon
+              className={`h-full w-full ${glyphClassName}`.trim()}
+              stroke={1.5}
+            />
           </motion.div>
         );
       })}

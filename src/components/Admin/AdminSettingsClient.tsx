@@ -96,19 +96,12 @@ const SettingsSchema = z.object({
 
   filesLimitUser: z.coerce.number().int().min(1).max(10000).nullable(),
   filesLimitAdmin: z.coerce.number().int().min(1).max(10000).nullable(),
-  notesLimitUser: z.coerce.number().int().min(1).max(10000).nullable(),
-  notesLimitAdmin: z.coerce.number().int().min(1).max(10000).nullable(),
   bookmarksLimitUser: z.coerce.number().int().min(1).max(10000).nullable(),
   bookmarksLimitAdmin: z.coerce.number().int().min(1).max(10000).nullable(),
-  snippetsLimitUser: z.coerce.number().int().min(1).max(10000).nullable(),
-  snippetsLimitAdmin: z.coerce.number().int().min(1).max(10000).nullable(),
-  recipesLimitUser: z.coerce.number().int().min(1).max(10000).nullable(),
-  recipesLimitAdmin: z.coerce.number().int().min(1).max(10000).nullable(),
   shortLinksLimitUser: z.coerce.number().int().min(1).max(10000).nullable(),
   shortLinksLimitAdmin: z.coerce.number().int().min(1).max(10000).nullable(),
 
   allowRemoteUpload: z.boolean(),
-  sponsorBannerEnabled: z.boolean(),
   disableApiTokens: z.boolean(),
 
   allowedMimePrefixes: z.string().optional(),
@@ -222,7 +215,6 @@ export default function AdminSettingsClient({
       maxUploadMb: initialValues.maxUploadMb,
       maxFilesPerUpload: initialValues.maxFilesPerUpload,
       allowPublicRegistration: initialValues.allowPublicRegistration,
-      sponsorBannerEnabled: initialValues.sponsorBannerEnabled ?? true,
       disableApiTokens: initialValues.disableApiTokens ?? false,
 
       userDailyQuotaMb: initialValues.userDailyQuotaMb,
@@ -231,14 +223,8 @@ export default function AdminSettingsClient({
       adminMaxStorageMb: initialValues.adminMaxStorageMb,
       filesLimitUser: initialValues.filesLimitUser,
       filesLimitAdmin: initialValues.filesLimitAdmin,
-      notesLimitUser: initialValues.notesLimitUser,
-      notesLimitAdmin: initialValues.notesLimitAdmin,
       bookmarksLimitUser: initialValues.bookmarksLimitUser,
       bookmarksLimitAdmin: initialValues.bookmarksLimitAdmin,
-      snippetsLimitUser: initialValues.snippetsLimitUser,
-      snippetsLimitAdmin: initialValues.snippetsLimitAdmin,
-      recipesLimitUser: initialValues.recipesLimitUser,
-      recipesLimitAdmin: initialValues.recipesLimitAdmin,
       shortLinksLimitUser: initialValues.shortLinksLimitUser,
       shortLinksLimitAdmin: initialValues.shortLinksLimitAdmin,
 
@@ -696,23 +682,6 @@ export default function AdminSettingsClient({
               </Grid>
             </Card>
 
-            <Card title="Sponsorship">
-              <ToggleRow
-                label={
-                  <span className="inline-flex items-center">
-                    Show sponsor banner
-                    <HelpTip text="Show a small sponsor banner every so often to support development." />
-                  </span>
-                }
-                checked={v.sponsorBannerEnabled}
-                onCheckedChange={(c) =>
-                  form.setValue("sponsorBannerEnabled", c, {
-                    shouldDirty: true,
-                  })
-                }
-              />
-            </Card>
-
             <Card title="Security Defaults">
               <Grid cols={1}>
                 <Field
@@ -927,26 +896,6 @@ export default function AdminSettingsClient({
                 </div>
 
                 <div className="grid gap-3 rounded-md border p-3">
-                  <div className="text-sm font-medium">Notes</div>
-                  <Grid cols={2}>
-                    <Field label="User limit">
-                      <Input
-                        type="number"
-                        placeholder="1>"
-                        {...form.register("notesLimitUser")}
-                      />
-                    </Field>
-                    <Field label="Admin limit">
-                      <Input
-                        type="number"
-                        placeholder="1>"
-                        {...form.register("notesLimitAdmin")}
-                      />
-                    </Field>
-                  </Grid>
-                </div>
-
-                <div className="grid gap-3 rounded-md border p-3">
                   <div className="text-sm font-medium">Bookmarks</div>
                   <Grid cols={2}>
                     <Field label="User limit">
@@ -961,46 +910,6 @@ export default function AdminSettingsClient({
                         type="number"
                         placeholder="1>"
                         {...form.register("bookmarksLimitAdmin")}
-                      />
-                    </Field>
-                  </Grid>
-                </div>
-
-                <div className="grid gap-3 rounded-md border p-3">
-                  <div className="text-sm font-medium">Snippets</div>
-                  <Grid cols={2}>
-                    <Field label="User limit">
-                      <Input
-                        type="number"
-                        placeholder="1>"
-                        {...form.register("snippetsLimitUser")}
-                      />
-                    </Field>
-                    <Field label="Admin limit">
-                      <Input
-                        type="number"
-                        placeholder="1>"
-                        {...form.register("snippetsLimitAdmin")}
-                      />
-                    </Field>
-                  </Grid>
-                </div>
-
-                <div className="grid gap-3 rounded-md border p-3">
-                  <div className="text-sm font-medium">Recipes</div>
-                  <Grid cols={2}>
-                    <Field label="User limit">
-                      <Input
-                        type="number"
-                        placeholder="1>"
-                        {...form.register("recipesLimitUser")}
-                      />
-                    </Field>
-                    <Field label="Admin limit">
-                      <Input
-                        type="number"
-                        placeholder="1>"
-                        {...form.register("recipesLimitAdmin")}
                       />
                     </Field>
                   </Grid>

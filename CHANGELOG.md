@@ -11,6 +11,20 @@ This project follows [Semantic Versioning](https://iconical.dev/versioning).
 
 ---
 
+## v1.3.4 – Auth Portal Improvements & Other Fixes ✨
+
+Released: April 16, 2026
+
+### 🔐 Auth Portal UX
+- Removed the video background from the auth hero section to improve performance and reduce distractions.
+- Enhanced the Auth Portal's visual design with a new floating ecosystem icon background, adding a modern and dynamic feel to the login and registration pages.
+
+### ⚙️ Settings & UI Fixes
+- Fixed a bug where Saving settings was not being clicked due to a wrong payload.
+- The Sponsor banner cannot be turned off in the settings, but it can be hidden by dismissing it, but it still appear again after a while. (It is intended to be like this, as the sponsor banner is a way to support the project and keep it free for everyone, but I understand that it can be annoying, so I've added a dismiss option and it will only be shown every few hours.)
+
+---
+
 ## v1.3.3 – Auth Experience & UI Polish ✨
 
 Released: April 15, 2026

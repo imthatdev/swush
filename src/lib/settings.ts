@@ -103,7 +103,6 @@ function buildPayload(input: Partial<ServerSettings>) {
     preservedUsernames: input.preservedUsernames ?? null,
     setupCompleted: input.setupCompleted,
     allowRemoteUpload: input.allowRemoteUpload,
-    sponsorBannerEnabled: input.sponsorBannerEnabled,
     disableApiTokens: input.disableApiTokens,
 
     updatedAt: new Date(),

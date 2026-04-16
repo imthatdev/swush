@@ -20,15 +20,13 @@
 import { useMemo, useState } from "react";
 import { IconBolt, IconHeart, IconX } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
-import { useAppConfig } from "@/components/Providers/AppConfigProvider";
 import { useLocalStorageNumber } from "@/hooks/use-local-storage";
 
 const STORAGE_KEY = "swush:sponsor-banner:last";
 const COOLDOWN_MS = 1000 * 60 * 60 * 8;
-const RANDOM_CHANCE = 0.25;
+const RANDOM_CHANCE = 0.5;
 
 export default function SponsorBanner() {
-  const { sponsorBannerEnabled } = useAppConfig();
   const [lastShown, setLastShown] = useLocalStorageNumber(STORAGE_KEY, 0);
   const [dismissed, setDismissed] = useState(false);
   const [roll] = useState(() => Math.random());
@@ -42,10 +40,7 @@ export default function SponsorBanner() {
   const sponsorUrl = useMemo(() => "https://iconical.dev/sponsor", []);
 
   const shouldShow =
-    sponsorBannerEnabled &&
-    !dismissed &&
-    now - lastShown > COOLDOWN_MS &&
-    roll <= RANDOM_CHANCE;
+    !dismissed && now - lastShown > COOLDOWN_MS && roll <= RANDOM_CHANCE;
 
   if (!shouldShow) return null;
 

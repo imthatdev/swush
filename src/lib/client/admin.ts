@@ -47,7 +47,6 @@ export type AdminSettingsPayload = {
   maxFilesPerUpload: number;
   allowPublicRegistration: boolean;
   passwordPolicyMinLength: number;
-  sponsorBannerEnabled: boolean;
   userDailyQuotaMb: number;
   adminDailyQuotaMb: number;
   userMaxStorageMb: number;

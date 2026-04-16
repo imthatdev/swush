@@ -485,9 +485,6 @@ export const serverSettings = pgTable("server_settings", {
   disallowedExtensions: text("disallowed_extensions").array(),
   setupCompleted: boolean("setup_completed").notNull().default(false),
   allowRemoteUpload: boolean("allow_remote_upload").default(false),
-  sponsorBannerEnabled: boolean("sponsor_banner_enabled")
-    .notNull()
-    .default(true),
   disableApiTokens: boolean("disable_api_tokens").notNull().default(false),
 
   createdAt: timestamp("created_at", { withTimezone: true })

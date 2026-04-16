@@ -33,7 +33,7 @@ export default function ExternalLayout({
     <PlayerProvider>
       <div className="relative isolate min-h-screen bg-background flex flex-col">
         <div className="pointer-events-none absolute inset-0 bg-linear-to-bl from-background via-background to-primary/10" />
-        <FloatingIconsBackground />
+        <FloatingIconsBackground count={67} />
         <div className="relative z-10 h-14 flex justify-between items-center px-4 border-b w-full">
           <Logo />
           <ThemeButton />
